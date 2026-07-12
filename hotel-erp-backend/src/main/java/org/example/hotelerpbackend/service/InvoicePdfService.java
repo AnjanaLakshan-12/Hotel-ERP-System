@@ -120,4 +120,161 @@ public class InvoicePdfService {
 
         document.add(table);
     }
+
+    
+    private void addChargeTable(Document document, Bill bill) throws Exception {
+        Font sectionFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14);
+        Paragraph sectionTitle = new Paragraph("Charge Breakdown", sectionFont);
+        sectionTitle.setSpacingAfter(10);
+        document.add(sectionTitle);
+
+        PdfPTable table = new PdfPTable(5);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[]{2, 3, 1, 2, 2});
+
+        addTableHeader(table, "Type");
+        addTableHeader(table, "Description");
+        addTableHeader(table, "Qty");
+        addTableHeader(table, "Unit Price");
+        addTableHeader(table, "Total");
+
+        addTableRow(
+                table,
+                "ROOM",
+                bill.getNights() + " night(s)",
+                "1",
+                bill.getRoomCharge(),
+                bill.getRoomCharge()
+        );
+
+        List<ServiceCharge> charges = serviceChargeRepository.findByReservationId(bill.getReservation().getId());
+
+        for (ServiceCharge charge : charges) {
+            addTableRow(
+                    table,
+                    charge.getChargeType().toString(),
+                    charge.getDescription(),
+                    String.valueOf(charge.getQuantity()),
+                    charge.getUnitPrice(),
+                    charge.getTotalAmount()
+            );
+        }
+
+        document.add(table);
+    }
+
+    private void addTotals(Document document, Bill bill) throws Exception {
+        PdfPTable table = new PdfPTable(2);
+        table.setWidthPercentage(45);
+        table.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        table.setSpacingBefore(20);
+
+        addTotalRow(table, "Room Charge", bill.getRoomCharge());
+        addTotalRow(table, "Service Charges", bill.getServiceChargeTotal());
+        addTotalRow(table, "Tax", bill.getTaxAmount());
+        addTotalRow(table, "Total Charges", bill.getTotalAmount());
+        addTotalRow(table, "Advance Paid", bill.getAdvanceAmount());
+        addTotalRow(table, "Balance Due", bill.getBalanceAmount());
+
+
+        addTextRow(table, "Invoice Status", bill.getStatus() == null ? "-" : bill.getStatus().toString());
+
+        addTextRow(
+                table,
+                "Payment Method",
+                bill.getPaymentMethod() == null ? "Not Paid" : bill.getPaymentMethod().toString()
+        );
+
+        addTextRow(
+                table,
+                "Paid At",
+                bill.getPaidAt() == null
+                        ? "-"
+                        : bill.getPaidAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+        );
+
+
+
+        document.add(table);
+    }
+
+    private void addFooter(Document document) throws Exception {
+        Paragraph footer = new Paragraph(
+                "Thank you for staying with us.",
+                FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 11, Color.DARK_GRAY)
+        );
+        footer.setAlignment(Element.ALIGN_CENTER);
+        footer.setSpacingBefore(30);
+        document.add(footer);
+    }
+
+    private void addTableHeader(PdfPTable table, String text) {
+        PdfPCell cell = new PdfPCell(new Phrase(text, FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, Color.WHITE)));
+        cell.setBackgroundColor(new Color(36, 48, 72));
+        cell.setPadding(8);
+        table.addCell(cell);
+    }
+
+    private void addTableRow(
+            PdfPTable table,
+            String type,
+            String description,
+            String quantity,
+            BigDecimal unitPrice,
+            BigDecimal total
+    ) {
+        table.addCell(createCell(type));
+        table.addCell(createCell(description));
+        table.addCell(createCell(quantity));
+        table.addCell(createCell(formatMoney(unitPrice)));
+        table.addCell(createCell(formatMoney(total)));
+    }
+
+    private PdfPCell createCell(String text) {
+        PdfPCell cell = new PdfPCell(new Phrase(text));
+        cell.setPadding(7);
+        return cell;
+    }
+
+    private void addTotalRow(PdfPTable table, String label, BigDecimal amount) {
+        PdfPCell labelCell = new PdfPCell(new Phrase(label, FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10)));
+        PdfPCell amountCell = new PdfPCell(new Phrase(formatMoney(amount)));
+
+        labelCell.setPadding(7);
+        amountCell.setPadding(7);
+        amountCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+
+        table.addCell(labelCell);
+        table.addCell(amountCell);
+    }
+
+    private void addTextRow(PdfPTable table, String label, String value) {
+        PdfPCell labelCell = new PdfPCell(new Phrase(label, FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10)));
+        PdfPCell valueCell = new PdfPCell(new Phrase(value));
+
+        labelCell.setPadding(7);
+        valueCell.setPadding(7);
+        valueCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+
+        table.addCell(labelCell);
+        table.addCell(valueCell);
+    }
+
+
+
+    private String formatMoney(BigDecimal amount) {
+        if (amount == null) {
+            amount = BigDecimal.ZERO;
+        }
+
+        return "LKR " + amount;
+    }
+
+    private String formatInvoiceNumber(Long id) {
+        return "INV-" + String.format("%04d", id);
+    }
+
+    private String formatReservationNumber(Long id) {
+        return "RES-" + String.format("%04d", id);
+    }
 }
