@@ -1,0 +1,181 @@
+package org.example.hotelerpbackend.service;
+
+import jakarta.transaction.Transactional;
+import org.example.hotelerpbackend.dto.ReservationRequest;
+import org.example.hotelerpbackend.entity.Bill;
+import org.example.hotelerpbackend.entity.Customer;
+import org.example.hotelerpbackend.entity.Reservation;
+import org.example.hotelerpbackend.entity.Room;
+import org.example.hotelerpbackend.enums.BillStatus;
+import org.example.hotelerpbackend.enums.ReservationStatus;
+import org.example.hotelerpbackend.enums.RoomStatus;
+import org.example.hotelerpbackend.repository.BillRepository;
+import org.example.hotelerpbackend.repository.CustomerRepository;
+import org.example.hotelerpbackend.repository.ReservationRepository;
+import org.example.hotelerpbackend.repository.RoomRepository;
+import org.springframework.stereotype.Service;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+
+@Service
+public class ReservationService {
+
+    private static final BigDecimal TAX_RATE = new BigDecimal("0.10");
+
+    private final ReservationRepository reservationRepository;
+    private final CustomerRepository customerRepository;
+    private final RoomRepository roomRepository;
+    private final BillRepository billRepository;
+
+    public ReservationService(
+            ReservationRepository reservationRepository,
+            CustomerRepository customerRepository,
+            RoomRepository roomRepository,
+            BillRepository billRepository
+    ) {
+        this.reservationRepository = reservationRepository;
+        this.customerRepository = customerRepository;
+        this.roomRepository = roomRepository;
+        this.billRepository = billRepository;
+    }
+
+    @Transactional
+    public Reservation createReservation(ReservationRequest request) {
+        Customer customer = customerRepository.findById(request.getCustomerId())
+                .orElseThrow(() -> new RuntimeException("Customer not found"));
+
+        Room room = roomRepository.findById(request.getRoomId())
+                .orElseThrow(() -> new RuntimeException("Room not found"));
+
+        if (room.getStatus() != RoomStatus.AVAILABLE) {
+            throw new RuntimeException("Room is not available");
+        }
+
+        if (request.getCheckOutDate().isBefore(request.getCheckInDate())
+                || request.getCheckOutDate().isEqual(request.getCheckInDate())) {
+            throw new RuntimeException("Check-out date must be after check-in date");
+        }
+
+        BigDecimal advanceAmount = request.getAdvanceAmount() == null
+                ? BigDecimal.ZERO
+                : request.getAdvanceAmount();
+
+        if (advanceAmount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new RuntimeException("Advance amount cannot be negative");
+        }
+
+
+
+        Reservation reservation = new Reservation();
+        reservation.setCustomer(customer);
+        reservation.setRoom(room);
+        reservation.setCheckInDate(request.getCheckInDate());
+        reservation.setCheckOutDate(request.getCheckOutDate());
+        reservation.setStatus(ReservationStatus.CONFIRMED);
+        reservation.setAdvanceAmount(advanceAmount);
+
+        if (advanceAmount.compareTo(BigDecimal.ZERO) > 0) {
+            reservation.setAdvancePaymentMethod(request.getAdvancePaymentMethod());
+        } else {
+            reservation.setAdvancePaymentMethod(null);
+        }
+
+        room.setStatus(RoomStatus.OCCUPIED);
+        roomRepository.save(room);
+
+        return reservationRepository.save(reservation);
+    }
+
+
+
+    public List<Reservation> getAllReservations() {
+        return reservationRepository.findAll();
+    }
+
+    public Reservation getReservationById(Long id) {
+        return reservationRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Reservation not found"));
+    }
+
+    @Transactional
+    public Reservation updateReservationStatus(Long id, ReservationStatus status) {
+        Reservation reservation = getReservationById(id);
+        reservation.setStatus(status);
+
+        if (status == ReservationStatus.CHECKED_OUT || status == ReservationStatus.CANCELLED) {
+            Room room = reservation.getRoom();
+            room.setStatus(RoomStatus.AVAILABLE);
+            roomRepository.save(room);
+        }
+
+        return reservationRepository.save(reservation);
+    }
+
+    public long calculateNights(Reservation reservation) {
+        return ChronoUnit.DAYS.between(
+                reservation.getCheckInDate(),
+                reservation.getCheckOutDate()
+        );
+    }
+
+    @Transactional
+    public Reservation earlyCheckout(Long id, LocalDate actualCheckoutDate) {
+        Reservation reservation = getReservationById(id);
+
+        if (actualCheckoutDate == null) {
+            throw new RuntimeException("Actual checkout date is required");
+        }
+
+        if (!actualCheckoutDate.isAfter(reservation.getCheckInDate())) {
+            throw new RuntimeException("Actual checkout date must be after check-in date");
+        }
+
+        if (actualCheckoutDate.isAfter(reservation.getCheckOutDate())) {
+            throw new RuntimeException("Actual checkout date cannot be after the planned checkout date");
+        }
+
+        reservation.setCheckOutDate(actualCheckoutDate);
+        reservation.setStatus(ReservationStatus.CHECKED_OUT);
+
+        Room room = reservation.getRoom();
+        room.setStatus(RoomStatus.AVAILABLE);
+        roomRepository.save(room);
+
+        billRepository.findByReservationId(id)
+                .ifPresent(bill -> recalculateBillForEarlyCheckout(bill, reservation));
+
+        return reservationRepository.save(reservation);
+    }
+
+
+    private void recalculateBillForEarlyCheckout(Bill bill, Reservation reservation) {
+        if (bill.getStatus() == BillStatus.PAID) {
+            throw new RuntimeException("Paid bill cannot be adjusted during early checkout");
+        }
+
+        if (bill.getStatus() == BillStatus.CANCELLED) {
+            return;
+        }
+
+        long nights = calculateNights(reservation);
+
+        BigDecimal roomCharge = reservation.getRoom().getPricePerNight()
+                .multiply(BigDecimal.valueOf(nights));
+
+        BigDecimal taxAmount = roomCharge.multiply(TAX_RATE)
+                .setScale(2, RoundingMode.HALF_UP);
+
+        BigDecimal totalAmount = roomCharge.add(taxAmount);
+
+        bill.setNights(nights);
+        bill.setRoomCharge(roomCharge);
+        bill.setTaxAmount(taxAmount);
+        bill.setTotalAmount(totalAmount);
+
+        billRepository.save(bill);
+    }
+}
