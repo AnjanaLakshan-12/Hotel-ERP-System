@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import AppShell from "../../components/AppShell";
 import StatusBadge from "../../components/StatusBadge";
 import StatCard from "../../components/StatCard";
+import { getBills } from "../../services/billService";
 import { getReservations, updateReservationStatus } from "../../services/reservationService";
 import { getRooms, updateRoomStatus } from "../../services/roomService";
-import { getBills } from "../../services/billService";
 import { formatReservationNumber } from "../../utils/reservationNumber";
 
 const staffReports = [
@@ -34,11 +34,31 @@ const staffReports = [
   }
 ];
 
+const maintenanceReports = [
+  {
+    id: 1,
+    roomNumber: "108",
+    submittedBy: "Service Staff",
+    issue: "Leaking bathroom tap",
+    priority: "HIGH",
+    notes: "Guest reported water leaking near the sink. Room should be inspected before next booking."
+  },
+  {
+    id: 2,
+    roomNumber: "205",
+    submittedBy: "Receptionist",
+    issue: "Air conditioner not cooling",
+    priority: "MEDIUM",
+    notes: "Guest complained during checkout. Maintenance team should check AC filter and cooling unit."
+  }
+];
+
 function ManagerPanel() {
   const [reservations, setReservations] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [bills, setBills] = useState([]);
   const [message, setMessage] = useState("");
+  const [selectedMaintenanceReport, setSelectedMaintenanceReport] = useState(null);
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -106,6 +126,32 @@ function ManagerPanel() {
     } catch (err) {
       setMessage(err.response?.data || "Failed to request maintenance");
     }
+  };
+
+  const handleSetRoomAvailable = async (roomId) => {
+    setMessage("");
+
+    try {
+      await updateRoomStatus(roomId, "AVAILABLE");
+      setMessage("Room marked as available");
+      loadData();
+    } catch (err) {
+      setMessage(err.response?.data || "Failed to update room status");
+    }
+  };
+
+  const handleReviewMaintenanceReport = (room) => {
+    const report = maintenanceReports.find((item) => item.roomNumber === room.roomNumber);
+
+    setSelectedMaintenanceReport(
+      report || {
+        roomNumber: room.roomNumber,
+        submittedBy: "Service Staff",
+        issue: "No detailed report submitted",
+        priority: "LOW",
+        notes: "This is a prototype maintenance report preview."
+      }
+    );
   };
 
   return (
@@ -203,7 +249,7 @@ function ManagerPanel() {
         <section className="panel table-panel span-wide">
           <h3>Room Maintenance Requests</h3>
           <p className="panel-note">
-            Managers can move rooms into maintenance when service staff report a room issue.
+            Managers can move rooms into maintenance, review maintenance reports, and return completed rooms to available status.
           </p>
 
           <table>
@@ -213,7 +259,7 @@ function ManagerPanel() {
                 <th>Type</th>
                 <th>Floor</th>
                 <th>Status</th>
-                <th>Action</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -226,9 +272,20 @@ function ManagerPanel() {
                   <td className="table-actions">
                     <button
                       onClick={() => handleMaintenanceRequest(room.id)}
-                      disabled={room.status === "MAINTENANCE"}
+                      disabled={room.status === "MAINTENANCE" || room.status === "OCCUPIED"}
                     >
                       Request Maintenance
+                    </button>
+
+                    <button
+                      onClick={() => handleSetRoomAvailable(room.id)}
+                      disabled={room.status !== "MAINTENANCE"}
+                    >
+                      Set Available
+                    </button>
+
+                    <button onClick={() => handleReviewMaintenanceReport(room)}>
+                      Review Report
                     </button>
                   </td>
                 </tr>
@@ -237,6 +294,34 @@ function ManagerPanel() {
           </table>
         </section>
       </section>
+
+      {selectedMaintenanceReport && (
+        <div className="modal-backdrop">
+          <div className="modal-panel">
+            <header>
+              <h3>Maintenance Report</h3>
+              <button onClick={() => setSelectedMaintenanceReport(null)}>Close</button>
+            </header>
+
+            <dl className="detail-list">
+              <dt>Room</dt>
+              <dd>{selectedMaintenanceReport.roomNumber}</dd>
+
+              <dt>Submitted By</dt>
+              <dd>{selectedMaintenanceReport.submittedBy}</dd>
+
+              <dt>Issue</dt>
+              <dd>{selectedMaintenanceReport.issue}</dd>
+
+              <dt>Priority</dt>
+              <dd><StatusBadge status={selectedMaintenanceReport.priority} /></dd>
+
+              <dt>Notes</dt>
+              <dd>{selectedMaintenanceReport.notes}</dd>
+            </dl>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }
