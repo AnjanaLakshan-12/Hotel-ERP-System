@@ -1,0 +1,12 @@
+package org.example.hotelerpbackend.repository;
+
+import org.example.hotelerpbackend.entity.MaintenanceRequest;
+import org.example.hotelerpbackend.enums.MaintenanceStatus;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+
+public interface MaintenanceRequestRepository extends JpaRepository<MaintenanceRequest, Long> {
+    List<MaintenanceRequest> findByStatus(MaintenanceStatus status);
+    List<MaintenanceRequest> findByRoomId(Long roomId);
+}
