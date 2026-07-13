@@ -2,7 +2,6 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
-import Register from "./pages/Register";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import CustomerManagement from "./pages/admin/CustomerManagement";
 import RoomManagement from "./pages/admin/RoomManagement";
@@ -17,7 +16,6 @@ function App() {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
       <Route element={<ProtectedRoute />}>
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/customers" element={<CustomerManagement />} />
