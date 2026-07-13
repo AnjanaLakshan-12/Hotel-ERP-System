@@ -93,8 +93,9 @@ public class BillService {
 
         Bill savedBill = billRepository.save(bill);
 
-        String invoiceFilePath = invoicePdfService.generateInvoicePdf(savedBill);
-        savedBill.setInvoiceFilePath(invoiceFilePath);
+        String invoiceUrl = invoicePdfService.generateInvoicePdf(savedBill);
+        savedBill.setInvoiceFilePath(invoiceUrl);
+        savedBill.setInvoiceBlobName("INV-" + String.format("%04d", savedBill.getId()) + ".pdf");
 
         return billRepository.save(savedBill);
     }

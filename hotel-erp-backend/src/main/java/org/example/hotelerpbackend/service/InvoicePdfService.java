@@ -16,8 +16,7 @@ import org.example.hotelerpbackend.repository.ServiceChargeRepository;
 import org.springframework.stereotype.Service;
 
 import java.awt.Color;
-import java.io.File;
-import java.io.FileOutputStream;
+import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -27,25 +26,22 @@ import java.util.List;
 @Service
 public class InvoicePdfService {
       private final ServiceChargeRepository serviceChargeRepository;
+      private final AzureBlobStorageService azureBlobStorageService;
 
-    public InvoicePdfService(ServiceChargeRepository serviceChargeRepository) {
+    public InvoicePdfService(ServiceChargeRepository serviceChargeRepository, AzureBlobStorageService azureBlobStorageService) {
         this.serviceChargeRepository = serviceChargeRepository;
+        this.azureBlobStorageService = azureBlobStorageService;
     }
 
     public String generateInvoicePdf(Bill bill) {
         try {
-            String folderPath = "invoices";
-            File folder = new File(folderPath);
-
-            if (!folder.exists()) {
-                folder.mkdirs();
-            }
-
             String invoiceNumber = formatInvoiceNumber(bill.getId());
-            String filePath = folderPath + "/" + invoiceNumber + ".pdf";
+            String fileName = invoiceNumber + ".pdf";
+
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 
             Document document = new Document(PageSize.A4);
-            PdfWriter.getInstance(document, new FileOutputStream(filePath));
+            PdfWriter.getInstance(document, outputStream);
             document.open();
 
             addHeader(document, invoiceNumber);
@@ -56,11 +52,15 @@ public class InvoicePdfService {
 
             document.close();
 
-            return filePath;
+            byte[] pdfBytes = outputStream.toByteArray();
+
+            return azureBlobStorageService.uploadPdf(fileName, pdfBytes);
+
         } catch (Exception e) {
             throw new RuntimeException("Failed to generate invoice PDF: " + e.getMessage());
         }
     }
+
 
     private void addHeader(Document document, String invoiceNumber) throws Exception {
         Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 22, Color.BLACK);

@@ -60,6 +60,9 @@ public class Bill {
     @Column
     private String invoiceFilePath;
 
+    @Column
+    private String invoiceBlobName;
+
     @Enumerated(EnumType.STRING)
     private PaymentMethod paymentMethod;
 

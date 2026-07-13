@@ -2,6 +2,7 @@ package org.example.hotelerpbackend.controller;
 
 
 import org.example.hotelerpbackend.enums.PaymentMethod;
+import org.example.hotelerpbackend.service.AzureBlobStorageService;
 import org.springframework.core.io.Resource;
 import org.example.hotelerpbackend.entity.Bill;
 import org.example.hotelerpbackend.enums.BillStatus;
@@ -19,9 +20,11 @@ import java.io.File;
 @RequestMapping("/api/bills")
 public class BillController {
     private final BillService billService;
+    private final AzureBlobStorageService azureBlobStorageService;
 
-    public BillController(BillService billService) {
+    public BillController(BillService billService,  AzureBlobStorageService azureBlobStorageService) {
         this.billService = billService;
+        this.azureBlobStorageService = azureBlobStorageService;
     }
 
     @PostMapping("/generate/{reservationId}")
@@ -70,28 +73,23 @@ public class BillController {
         }
     }
 
+
     @GetMapping("/{id}/download")
-    public ResponseEntity<Resource> downloadInvoice(@PathVariable Long id) {
+    public ResponseEntity<byte[]> downloadInvoice(@PathVariable Long id) {
         Bill bill = billService.getBillById(id);
 
-        if (bill.getInvoiceFilePath() == null) {
+        if (bill.getInvoiceBlobName() == null) {
             return ResponseEntity.notFound().build();
         }
 
-        File file = new File(bill.getInvoiceFilePath());
-
-        if (!file.exists()) {
-            return ResponseEntity.notFound().build();
-        }
-
-        Resource resource = new FileSystemResource(file);
+        byte[] pdfBytes = azureBlobStorageService.downloadPdf(bill.getInvoiceBlobName());
 
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_PDF)
                 .header(
                         HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + file.getName() + "\""
+                        "attachment; filename=\"" + bill.getInvoiceBlobName() + "\""
                 )
-                .body(resource);
+                .body(pdfBytes);
     }
 }
