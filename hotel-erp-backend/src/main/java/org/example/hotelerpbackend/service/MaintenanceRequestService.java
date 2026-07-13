@@ -4,6 +4,7 @@ package org.example.hotelerpbackend.service;
 import org.example.hotelerpbackend.dto.MaintenanceRequestDto;
 import org.example.hotelerpbackend.entity.MaintenanceRequest;
 import org.example.hotelerpbackend.entity.Room;
+import org.example.hotelerpbackend.enums.MaintenancePriority;
 import org.example.hotelerpbackend.enums.MaintenanceStatus;
 import org.example.hotelerpbackend.enums.RoomStatus;
 import org.example.hotelerpbackend.repository.MaintenanceRequestRepository;
@@ -55,10 +56,11 @@ public class MaintenanceRequestService {
         return maintenanceRequestRepository.findByStatus(MaintenanceStatus.PENDING);
     }
 
-    public MaintenanceRequest approveRequest(Long id, String managerNote) {
+    public MaintenanceRequest approveRequest(Long id, String managerNote, MaintenancePriority priority) {
         MaintenanceRequest request = maintenanceRequestRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Maintenance request not found"));
 
+        request.setPriority(priority);
         request.setStatus(MaintenanceStatus.APPROVED);
         request.setManagerNote(managerNote);
         request.setReviewedAt(LocalDateTime.now());

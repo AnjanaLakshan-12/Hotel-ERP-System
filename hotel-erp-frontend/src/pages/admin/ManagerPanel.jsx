@@ -2,76 +2,36 @@ import { useEffect, useState } from "react";
 import AppShell from "../../components/AppShell";
 import StatusBadge from "../../components/StatusBadge";
 import StatCard from "../../components/StatCard";
-import { getBills } from "../../services/billService";
 import { getReservations, updateReservationStatus } from "../../services/reservationService";
-import { getRooms, updateRoomStatus } from "../../services/roomService";
+import { getBills } from "../../services/billService";
+import {
+  approveMaintenanceRequest,
+  completeMaintenanceRequest,
+  getMaintenanceRequests,
+  rejectMaintenanceRequest
+} from "../../services/maintenanceRequestService";
 import { formatReservationNumber } from "../../utils/reservationNumber";
-
-const staffReports = [
-  {
-    id: 1,
-    submittedBy: "Receptionist",
-    title: "Guest requested late checkout",
-    description: "Room 205 guest requested checkout extension until 2 PM.",
-    priority: "MEDIUM",
-    status: "PENDING"
-  },
-  {
-    id: 2,
-    submittedBy: "Service Staff",
-    title: "Mini bar restock required",
-    description: "Room 304 mini bar needs water bottles and soft drinks.",
-    priority: "LOW",
-    status: "OPEN"
-  },
-  {
-    id: 3,
-    submittedBy: "Service Staff",
-    title: "Bathroom maintenance issue",
-    description: "Room 108 has a leaking tap reported during cleaning.",
-    priority: "HIGH",
-    status: "PENDING"
-  }
-];
-
-const maintenanceReports = [
-  {
-    id: 1,
-    roomNumber: "108",
-    submittedBy: "Service Staff",
-    issue: "Leaking bathroom tap",
-    priority: "HIGH",
-    notes: "Guest reported water leaking near the sink. Room should be inspected before next booking."
-  },
-  {
-    id: 2,
-    roomNumber: "205",
-    submittedBy: "Receptionist",
-    issue: "Air conditioner not cooling",
-    priority: "MEDIUM",
-    notes: "Guest complained during checkout. Maintenance team should check AC filter and cooling unit."
-  }
-];
 
 function ManagerPanel() {
   const [reservations, setReservations] = useState([]);
-  const [rooms, setRooms] = useState([]);
   const [bills, setBills] = useState([]);
+  const [maintenanceRequests, setMaintenanceRequests] = useState([]);
   const [message, setMessage] = useState("");
-  const [selectedMaintenanceReport, setSelectedMaintenanceReport] = useState(null);
+  const [managerNotes, setManagerNotes] = useState({});
+  const [priorities, setPriorities] = useState({});
 
   const today = new Date().toISOString().slice(0, 10);
 
   const loadData = async () => {
-    const [reservationResponse, roomResponse, billResponse] = await Promise.all([
+    const [reservationResponse, billResponse, maintenanceResponse] = await Promise.all([
       getReservations(),
-      getRooms(),
-      getBills()
+      getBills(),
+      getMaintenanceRequests()
     ]);
 
     setReservations(reservationResponse.data);
-    setRooms(roomResponse.data);
     setBills(billResponse.data);
+    setMaintenanceRequests(maintenanceResponse.data);
   };
 
   useEffect(() => {
@@ -98,6 +58,73 @@ function ManagerPanel() {
     reservation.status === "PENDING_CANCEL"
   );
 
+  const pendingMaintenanceRequests = maintenanceRequests.filter((request) =>
+    request.status === "PENDING"
+  );
+
+  const approvedMaintenanceRequests = maintenanceRequests.filter((request) =>
+    request.status === "APPROVED"
+  );
+
+  const handleNoteChange = (requestId, value) => {
+    setManagerNotes({
+      ...managerNotes,
+      [requestId]: value
+    });
+  };
+
+  const handlePriorityChange = (requestId, value) => {
+    setPriorities({
+      ...priorities,
+      [requestId]: value
+    });
+  };
+
+  const handleApproveMaintenance = async (request) => {
+    setMessage("");
+
+    try {
+      await approveMaintenanceRequest(
+        request.id,
+        managerNotes[request.id] || "",
+        priorities[request.id] || "MEDIUM"
+      );
+
+      setMessage("Maintenance request approved and room moved to maintenance");
+      loadData();
+    } catch (err) {
+      setMessage(err.response?.data || "Failed to approve maintenance request");
+    }
+  };
+
+  const handleRejectMaintenance = async (request) => {
+    setMessage("");
+
+    try {
+      await rejectMaintenanceRequest(
+        request.id,
+        managerNotes[request.id] || ""
+      );
+
+      setMessage("Maintenance request rejected");
+      loadData();
+    } catch (err) {
+      setMessage(err.response?.data || "Failed to reject maintenance request");
+    }
+  };
+
+  const handleCompleteMaintenance = async (request) => {
+    setMessage("");
+
+    try {
+      await completeMaintenanceRequest(request.id);
+      setMessage("Maintenance completed and room returned to available");
+      loadData();
+    } catch (err) {
+      setMessage(err.response?.data || "Failed to complete maintenance request");
+    }
+  };
+
   const handleCancellationDecision = async (reservationId, decision) => {
     setMessage("");
 
@@ -116,48 +143,10 @@ function ManagerPanel() {
     }
   };
 
-  const handleMaintenanceRequest = async (roomId) => {
-    setMessage("");
-
-    try {
-      await updateRoomStatus(roomId, "MAINTENANCE");
-      setMessage("Room marked for maintenance");
-      loadData();
-    } catch (err) {
-      setMessage(err.response?.data || "Failed to request maintenance");
-    }
-  };
-
-  const handleSetRoomAvailable = async (roomId) => {
-    setMessage("");
-
-    try {
-      await updateRoomStatus(roomId, "AVAILABLE");
-      setMessage("Room marked as available");
-      loadData();
-    } catch (err) {
-      setMessage(err.response?.data || "Failed to update room status");
-    }
-  };
-
-  const handleReviewMaintenanceReport = (room) => {
-    const report = maintenanceReports.find((item) => item.roomNumber === room.roomNumber);
-
-    setSelectedMaintenanceReport(
-      report || {
-        roomNumber: room.roomNumber,
-        submittedBy: "Service Staff",
-        issue: "No detailed report submitted",
-        priority: "LOW",
-        notes: "This is a prototype maintenance report preview."
-      }
-    );
-  };
-
   return (
     <AppShell
       title="Manager Panel"
-      subtitle="Operational approvals, staff reports, maintenance requests, and daily hotel status."
+      subtitle="Operational approvals, maintenance control, cancellation decisions, and daily hotel status."
     >
       {message && <div className="alert">{message}</div>}
 
@@ -169,33 +158,105 @@ function ManagerPanel() {
       </section>
 
       <section className="manager-grid">
-        <section className="panel table-panel">
-          <h3>Staff Reports</h3>
+        <section className="panel table-panel span-wide">
+          <h3>Maintenance Requests</h3>
           <p className="panel-note">
-            Reports submitted by receptionists and service staff. This is a prototype view until backend report submission is added.
+            Requests are submitted by receptionists from Room Management. Managers set priority and approve or reject.
           </p>
 
           <table>
             <thead>
               <tr>
-                <th>Submitted By</th>
-                <th>Report</th>
+                <th>Room</th>
+                <th>Issue</th>
+                <th>Reported By</th>
                 <th>Priority</th>
+                <th>Manager Note</th>
                 <th>Status</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {staffReports.map((report) => (
-                <tr key={report.id}>
-                  <td>{report.submittedBy}</td>
-                  <td>
-                    <strong>{report.title}</strong>
-                    <p className="table-note">{report.description}</p>
-                  </td>
-                  <td><StatusBadge status={report.priority} /></td>
-                  <td><StatusBadge status={report.status} /></td>
+              {pendingMaintenanceRequests.length === 0 ? (
+                <tr>
+                  <td colSpan="7">No pending maintenance requests</td>
                 </tr>
-              ))}
+              ) : (
+                pendingMaintenanceRequests.map((request) => (
+                  <tr key={request.id}>
+                    <td>
+                      Room {request.room?.roomNumber}
+                      <p className="table-note">Floor {request.room?.floor || "-"}</p>
+                    </td>
+                    <td>
+                      <strong>{request.issueTitle}</strong>
+                      <p className="table-note">{request.description}</p>
+                    </td>
+                    <td>{request.reportedBy}</td>
+                    <td>
+                      <select
+                        value={priorities[request.id] || request.priority || "MEDIUM"}
+                        onChange={(event) => handlePriorityChange(request.id, event.target.value)}
+                      >
+                        <option value="LOW">Low</option>
+                        <option value="MEDIUM">Medium</option>
+                        <option value="HIGH">High</option>
+                        <option value="URGENT">Urgent</option>
+                      </select>
+                    </td>
+                    <td>
+                      <input
+                        value={managerNotes[request.id] || ""}
+                        onChange={(event) => handleNoteChange(request.id, event.target.value)}
+                        placeholder="Manager decision note"
+                      />
+                    </td>
+                    <td><StatusBadge status={request.status} /></td>
+                    <td className="table-actions">
+                      <button onClick={() => handleApproveMaintenance(request)}>Approve</button>
+                      <button className="danger" onClick={() => handleRejectMaintenance(request)}>Reject</button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </section>
+
+        <section className="panel table-panel">
+          <h3>Active Maintenance</h3>
+          <p className="panel-note">
+            Approved requests stay active until the manager marks the repair as completed.
+          </p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Room</th>
+                <th>Issue</th>
+                <th>Priority</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {approvedMaintenanceRequests.length === 0 ? (
+                <tr>
+                  <td colSpan="4">No active maintenance work</td>
+                </tr>
+              ) : (
+                approvedMaintenanceRequests.map((request) => (
+                  <tr key={request.id}>
+                    <td>Room {request.room?.roomNumber}</td>
+                    <td>{request.issueTitle}</td>
+                    <td><StatusBadge status={request.priority} /></td>
+                    <td className="table-actions">
+                      <button onClick={() => handleCompleteMaintenance(request)}>
+                        Mark Completed
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </section>
@@ -245,83 +306,7 @@ function ManagerPanel() {
             </tbody>
           </table>
         </section>
-
-        <section className="panel table-panel span-wide">
-          <h3>Room Maintenance Requests</h3>
-          <p className="panel-note">
-            Managers can move rooms into maintenance, review maintenance reports, and return completed rooms to available status.
-          </p>
-
-          <table>
-            <thead>
-              <tr>
-                <th>Room</th>
-                <th>Type</th>
-                <th>Floor</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rooms.map((room) => (
-                <tr key={room.id}>
-                  <td>{room.roomNumber}</td>
-                  <td>{room.roomType}</td>
-                  <td>Floor {room.floor || "-"}</td>
-                  <td><StatusBadge status={room.status} /></td>
-                  <td className="table-actions">
-                    <button
-                      onClick={() => handleMaintenanceRequest(room.id)}
-                      disabled={room.status === "MAINTENANCE" || room.status === "OCCUPIED"}
-                    >
-                      Request Maintenance
-                    </button>
-
-                    <button
-                      onClick={() => handleSetRoomAvailable(room.id)}
-                      disabled={room.status !== "MAINTENANCE"}
-                    >
-                      Set Available
-                    </button>
-
-                    <button onClick={() => handleReviewMaintenanceReport(room)}>
-                      Review Report
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
       </section>
-
-      {selectedMaintenanceReport && (
-        <div className="modal-backdrop">
-          <div className="modal-panel">
-            <header>
-              <h3>Maintenance Report</h3>
-              <button onClick={() => setSelectedMaintenanceReport(null)}>Close</button>
-            </header>
-
-            <dl className="detail-list">
-              <dt>Room</dt>
-              <dd>{selectedMaintenanceReport.roomNumber}</dd>
-
-              <dt>Submitted By</dt>
-              <dd>{selectedMaintenanceReport.submittedBy}</dd>
-
-              <dt>Issue</dt>
-              <dd>{selectedMaintenanceReport.issue}</dd>
-
-              <dt>Priority</dt>
-              <dd><StatusBadge status={selectedMaintenanceReport.priority} /></dd>
-
-              <dt>Notes</dt>
-              <dd>{selectedMaintenanceReport.notes}</dd>
-            </dl>
-          </div>
-        </div>
-      )}
     </AppShell>
   );
 }
