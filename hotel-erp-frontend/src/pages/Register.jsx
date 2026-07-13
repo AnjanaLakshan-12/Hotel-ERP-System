@@ -61,6 +61,7 @@ function Register() {
               <option value="ADMIN">Admin</option>
               <option value="MANAGER">Manager</option>
               <option value="RECEPTIONIST">Receptionist</option>
+              <option value="SERVICE_STAFF">Service Staff</option>
             </select>
           </label>
           <button className="primary-button full span-two" type="submit">Create User</button>

@@ -1,5 +1,9 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { clearStoredUser, getStoredUser } from "../services/userService";
+import { NavLink, useNavigate } from "react-router-dom";
+import { clearStoredUser, getStoredUser } from "../services/userService";
+import { canAccess, navigationItems } from "../utils/roleAccess";
+
 
 function Navbar() {
   const navigate = useNavigate();
@@ -21,14 +25,14 @@ function Navbar() {
       </div>
 
       <nav className="nav-menu">
-        <NavLink to="/admin/dashboard">Dashboard</NavLink>
-        <NavLink to="/admin/customers">Customers</NavLink>
-        <NavLink to="/admin/rooms">Rooms</NavLink>
-        <NavLink to="/admin/reservations">Reservations</NavLink>
-        <NavLink to="/admin/service-charges">Service Charges</NavLink>
-        <NavLink to="/admin/billing">Invoices</NavLink>
-        <NavLink to="/admin/users">Users</NavLink>
-      </nav>
+  {navigationItems
+    .filter((item) => canAccess(user?.role, item.roles))
+    .map((item) => (
+      <NavLink key={item.path} to={item.path}>
+        {item.label}
+      </NavLink>
+    ))}
+</nav>
 
       <div className="sidebar-footer">
         <div className="user-chip">
