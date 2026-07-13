@@ -23,6 +23,28 @@ const emptyReservation = {
   advancePaymentMethod: "CASH"
 };
 
+const getErrorMessage = (err, fallback) => {
+  const data = err.response?.data;
+
+  if (!data) {
+    return fallback;
+  }
+
+  if (typeof data === "string") {
+    return data;
+  }
+
+  if (data.message) {
+    return data.message;
+  }
+
+  if (data.error) {
+    return data.error;
+  }
+
+  return fallback;
+};
+
 function ReservationManagement() {
   const [reservations, setReservations] = useState([]);
   const [customers, setCustomers] = useState([]);
@@ -68,7 +90,7 @@ function ReservationManagement() {
       setMessage("Reservation created and room status updated");
       loadData();
     } catch (err) {
-      setMessage(err.response?.data || "Reservation failed");
+      setMessage(getErrorMessage(err, "Reservation failed"));
     }
   };
 
@@ -97,7 +119,7 @@ function ReservationManagement() {
       setMessage(`Reservation cancelled and room released.${refundMessage}`);
       loadData();
     } catch (err) {
-      setMessage(err.response?.data || "Reservation cancellation failed");
+      setMessage(getErrorMessage(err, "Reservation cancellation failed"));
     }
   };
 
@@ -123,7 +145,7 @@ function ReservationManagement() {
       setMessage("Early checkout completed. Room released and unpaid bill adjusted.");
       loadData();
     } catch (err) {
-      setMessage(err.response?.data || "Early checkout failed");
+      setMessage(getErrorMessage(err, "Early checkout failed"));
     }
   };
 
@@ -264,15 +286,21 @@ function ReservationManagement() {
                   </td>
 
                   <td className="table-actions">
-                    <button onClick={() => setSelected(reservation)}>View</button>
+                    <button type="button" onClick={() => setSelected(reservation)}>
+                      View
+                    </button>
 
                     {reservation.status === "CONFIRMED" && (
                       <>
-                        <button onClick={() => handleStatus(reservation.id, "CHECKED_IN")}>
+                        <button type="button" onClick={() => handleStatus(reservation.id, "CHECKED_IN")}>
                           Check In
                         </button>
 
-                        <button className="danger" onClick={() => handleCancelReservation(reservation)}>
+                        <button
+                          type="button"
+                          className="danger"
+                          onClick={() => handleCancelReservation(reservation)}
+                        >
                           Cancel
                         </button>
                       </>
@@ -280,11 +308,11 @@ function ReservationManagement() {
 
                     {reservation.status === "CHECKED_IN" && (
                       <>
-                        <button onClick={() => handleStatus(reservation.id, "CHECKED_OUT")}>
+                        <button type="button" onClick={() => handleStatus(reservation.id, "CHECKED_OUT")}>
                           Check Out
                         </button>
 
-                        <button onClick={() => handleEarlyCheckout(reservation)}>
+                        <button type="button" onClick={() => handleEarlyCheckout(reservation)}>
                           Early Checkout
                         </button>
                       </>
