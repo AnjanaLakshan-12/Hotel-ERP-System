@@ -24,6 +24,18 @@ function ReservationDetailModal({ reservation, onClose }) {
           <dd>{reservation.checkInDate} to {reservation.checkOutDate}</dd>
           <dt>Status</dt>
           <dd>{reservation.status}</dd>
+          {reservation.status === "CANCELLED" && (
+  <>
+    <dt>Cancellation Reason</dt>
+    <dd>{reservation.cancellationReason || "-"}</dd>
+
+    <dt>Advance Refunded</dt>
+    <dd>{reservation.advanceRefunded ? "Yes" : "No"}</dd>
+
+    <dt>Refunded Amount</dt>
+    <dd>LKR {Number(reservation.refundedAmount || 0).toLocaleString()}</dd>
+  </>
+)}
         </dl>
       </div>
     </div>

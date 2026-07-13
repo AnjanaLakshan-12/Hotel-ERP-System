@@ -1,5 +1,6 @@
 package org.example.hotelerpbackend.controller;
 
+import org.example.hotelerpbackend.dto.CancelReservationRequest;
 import org.example.hotelerpbackend.dto.ReservationRequest;
 import org.example.hotelerpbackend.enums.ReservationStatus;
 import org.example.hotelerpbackend.service.ReservationService;
@@ -49,7 +50,7 @@ public class ReservationController {
         try {
             return ResponseEntity.ok(reservationService.updateReservationStatus(id, status));
         } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
@@ -64,4 +65,18 @@ public class ReservationController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+    @PatchMapping("/{id}/cancel")
+    public ResponseEntity<?> cancelReservation(
+            @PathVariable Long id,
+            @RequestBody CancelReservationRequest request
+    ) {
+        try {
+            return ResponseEntity.ok(reservationService.cancelReservation(id, request));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+
 }

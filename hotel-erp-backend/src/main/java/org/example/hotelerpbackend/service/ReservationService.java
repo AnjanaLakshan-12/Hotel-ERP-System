@@ -1,6 +1,7 @@
 package org.example.hotelerpbackend.service;
 
 import jakarta.transaction.Transactional;
+import org.example.hotelerpbackend.dto.CancelReservationRequest;
 import org.example.hotelerpbackend.dto.ReservationRequest;
 import org.example.hotelerpbackend.entity.Bill;
 import org.example.hotelerpbackend.entity.Customer;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
@@ -104,9 +106,24 @@ public class ReservationService {
     @Transactional
     public Reservation updateReservationStatus(Long id, ReservationStatus status) {
         Reservation reservation = getReservationById(id);
+
+        if (reservation.getStatus() == ReservationStatus.CANCELLED) {
+            throw new RuntimeException("Cancelled reservation status cannot be changed.");
+        }
+
+        if (status == ReservationStatus.CANCELLED) {
+            throw new RuntimeException("Use the cancellation process to cancel a reservation.");
+        }
+
         reservation.setStatus(status);
 
-        if (status == ReservationStatus.CHECKED_OUT || status == ReservationStatus.CANCELLED) {
+        if (status == ReservationStatus.CHECKED_IN) {
+            Room room = reservation.getRoom();
+            room.setStatus(RoomStatus.OCCUPIED);
+            roomRepository.save(room);
+        }
+
+        if (status == ReservationStatus.CHECKED_OUT) {
             Room room = reservation.getRoom();
             room.setStatus(RoomStatus.AVAILABLE);
             roomRepository.save(room);
@@ -177,5 +194,54 @@ public class ReservationService {
         bill.setTotalAmount(totalAmount);
 
         billRepository.save(bill);
+    }
+
+    public Reservation cancelReservation(Long id, CancelReservationRequest request) {
+        Reservation reservation = reservationRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Reservation not found"));
+
+        if (reservation.getStatus() == ReservationStatus.CHECKED_IN) {
+            throw new RuntimeException("Checked-in reservation cannot be cancelled. Please use checkout or early checkout.");
+        }
+
+        if (reservation.getStatus() == ReservationStatus.CHECKED_OUT) {
+            throw new RuntimeException("Checked-out reservation cannot be cancelled.");
+        }
+
+        if (reservation.getStatus() == ReservationStatus.CANCELLED) {
+            throw new RuntimeException("Reservation is already cancelled.");
+        }
+
+        if (request.getCancellationReason() == null || request.getCancellationReason().trim().isEmpty()) {
+            throw new RuntimeException("Cancellation reason is required.");
+        }
+
+        reservation.setStatus(ReservationStatus.CANCELLED);
+        reservation.setCancellationReason(request.getCancellationReason().trim());
+
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime checkInDateTime = reservation.getCheckInDate().atStartOfDay();
+
+        long hoursBeforeCheckIn = ChronoUnit.HOURS.between(now, checkInDateTime);
+        boolean eligibleForRefund = hoursBeforeCheckIn >= 24;
+
+        BigDecimal advanceAmount = reservation.getAdvanceAmount() == null
+                ? BigDecimal.ZERO
+                : reservation.getAdvanceAmount();
+
+        boolean shouldRefund = eligibleForRefund && advanceAmount.compareTo(BigDecimal.ZERO) > 0;
+
+        reservation.setAdvanceRefunded(shouldRefund);
+
+        if (shouldRefund) {
+            reservation.setRefundedAmount(advanceAmount);
+        } else {
+            reservation.setRefundedAmount(BigDecimal.ZERO);
+        }
+
+        reservation.getRoom().setStatus(RoomStatus.AVAILABLE);
+        roomRepository.save(reservation.getRoom());
+
+        return reservationRepository.save(reservation);
     }
 }

@@ -9,3 +9,7 @@ export const updateReservationStatus = (id, status) =>
 
 export const earlyCheckout = (id, actualCheckoutDate) =>
   api.patch(`/api/reservations/${id}/early-checkout?actualCheckoutDate=${actualCheckoutDate}`);
+
+
+export const cancelReservation = (id, cancellationData) =>
+  api.patch(`/api/reservations/${id}/cancel`, cancellationData);

@@ -51,6 +51,11 @@
   font-size: 13px;
 }
 
+.status-cancelled {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
 .nav-menu {
   display: grid;
   gap: 8px;

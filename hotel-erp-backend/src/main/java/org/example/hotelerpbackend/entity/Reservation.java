@@ -56,4 +56,14 @@ public class Reservation {
 
     @Enumerated(EnumType.STRING)
     private PaymentMethod advancePaymentMethod;
+
+    @Column(length = 500)
+    private String cancellationReason;
+
+    @Column(nullable = false)
+    private Boolean advanceRefunded = false;
+
+    @Column
+    private BigDecimal refundedAmount = BigDecimal.ZERO;
+
 }

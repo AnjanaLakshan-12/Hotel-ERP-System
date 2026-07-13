@@ -5,6 +5,7 @@ import StatusBadge from "../../components/StatusBadge";
 import { getCustomers } from "../../services/customerService";
 import { getRooms } from "../../services/roomService";
 import {
+  cancelReservation,
   createReservation,
   earlyCheckout,
   getReservations,
@@ -36,6 +37,7 @@ function ReservationManagement() {
       getCustomers(),
       getRooms()
     ]);
+
     setReservations(reservationResponse.data);
     setCustomers(customerResponse.data);
     setRooms(roomResponse.data);
@@ -52,6 +54,7 @@ function ReservationManagement() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setMessage("");
+
     try {
       await createReservation({
         ...form,
@@ -60,11 +63,41 @@ function ReservationManagement() {
         advanceAmount: Number(form.advanceAmount || 0),
         advancePaymentMethod: Number(form.advanceAmount || 0) > 0 ? form.advancePaymentMethod : null
       });
+
       setForm(emptyReservation);
       setMessage("Reservation created and room status updated");
       loadData();
     } catch (err) {
       setMessage(err.response?.data || "Reservation failed");
+    }
+  };
+
+  const handleCancelReservation = async (reservation) => {
+    const cancellationReason = window.prompt(
+      "Enter cancellation reason",
+      "Guest requested cancellation"
+    );
+
+    if (!cancellationReason) {
+      return;
+    }
+
+    setMessage("");
+
+    try {
+      const response = await cancelReservation(reservation.id, {
+        cancellationReason
+      });
+
+      const cancelledReservation = response.data;
+      const refundMessage = cancelledReservation.advanceRefunded
+        ? ` Advance refunded: LKR ${Number(cancelledReservation.refundedAmount || 0).toLocaleString()}.`
+        : " Advance not refunded due to cancellation policy.";
+
+      setMessage(`Reservation cancelled and room released.${refundMessage}`);
+      loadData();
+    } catch (err) {
+      setMessage(err.response?.data || "Reservation cancellation failed");
     }
   };
 
@@ -84,6 +117,7 @@ function ReservationManagement() {
     }
 
     setMessage("");
+
     try {
       await earlyCheckout(reservation.id, actualCheckoutDate);
       setMessage("Early checkout completed. Room released and unpaid bill adjusted.");
@@ -99,6 +133,7 @@ function ReservationManagement() {
         <form className="panel form-grid two" onSubmit={handleSubmit}>
           <h3 className="span-two">Create Reservation</h3>
           {message && <div className="alert span-two">{message}</div>}
+
           <label>
             Customer
             <select name="customerId" value={form.customerId} onChange={handleChange} required>
@@ -110,25 +145,44 @@ function ReservationManagement() {
               ))}
             </select>
           </label>
+
           <label>
             Room
             <select name="roomId" value={form.roomId} onChange={handleChange} required>
               <option value="">Select available room</option>
-              {rooms.filter((room) => room.status === "AVAILABLE").map((room) => (
-                <option key={room.id} value={room.id}>
-                  {room.roomNumber} - {room.roomType} - Floor {room.floor || "-"} - LKR {Number(room.pricePerNight).toLocaleString()}
-                </option>
-              ))}
+              {rooms
+                .filter((room) => room.status === "AVAILABLE")
+                .map((room) => (
+                  <option key={room.id} value={room.id}>
+                    {room.roomNumber} - {room.roomType} - Floor {room.floor || "-"} - LKR{" "}
+                    {Number(room.pricePerNight || 0).toLocaleString()}
+                  </option>
+                ))}
             </select>
           </label>
+
           <label>
             Check-in Date
-            <input name="checkInDate" type="date" value={form.checkInDate} onChange={handleChange} required />
+            <input
+              name="checkInDate"
+              type="date"
+              value={form.checkInDate}
+              onChange={handleChange}
+              required
+            />
           </label>
+
           <label>
             Check-out Date
-            <input name="checkOutDate" type="date" value={form.checkOutDate} onChange={handleChange} required />
+            <input
+              name="checkOutDate"
+              type="date"
+              value={form.checkOutDate}
+              onChange={handleChange}
+              required
+            />
           </label>
+
           <label className="span-two">
             Advance Amount
             <input
@@ -140,6 +194,7 @@ function ReservationManagement() {
               placeholder="Optional deposit paid at booking"
             />
           </label>
+
           <label className="span-two">
             Advance Payment Method
             <select name="advancePaymentMethod" value={form.advancePaymentMethod} onChange={handleChange}>
@@ -150,11 +205,15 @@ function ReservationManagement() {
               ))}
             </select>
           </label>
-          <button className="primary-button span-two" type="submit">Create Reservation</button>
+
+          <button className="primary-button span-two" type="submit">
+            Create Reservation
+          </button>
         </form>
 
         <section className="panel table-panel">
           <h3>Reservations</h3>
+
           <table>
             <thead>
               <tr>
@@ -165,24 +224,71 @@ function ReservationManagement() {
                 <th>Payment</th>
                 <th>Dates</th>
                 <th>Status</th>
+                <th>Refund</th>
+                <th>Cancellation</th>
                 <th>Actions</th>
               </tr>
             </thead>
+
             <tbody>
               {reservations.map((reservation) => (
                 <tr key={reservation.id}>
                   <td>{formatReservationNumber(reservation.id)}</td>
-                  <td>{reservation.customer?.firstName} {reservation.customer?.lastName}</td>
-                  <td>{reservation.room?.roomNumber} - Floor {reservation.room?.floor || "-"}</td>
+                  <td>
+                    {reservation.customer?.firstName} {reservation.customer?.lastName}
+                  </td>
+                  <td>
+                    {reservation.room?.roomNumber} - Floor {reservation.room?.floor || "-"}
+                  </td>
                   <td>LKR {Number(reservation.advanceAmount || 0).toLocaleString()}</td>
                   <td>{formatPaymentMethod(reservation.advancePaymentMethod)}</td>
-                  <td>{reservation.checkInDate} to {reservation.checkOutDate}</td>
-                  <td><StatusBadge status={reservation.status} /></td>
+                  <td>
+                    {reservation.checkInDate} to {reservation.checkOutDate}
+                  </td>
+                  <td>
+                    <StatusBadge status={reservation.status} />
+                  </td>
+
+                  <td>
+                    {reservation.status === "CANCELLED"
+                      ? reservation.advanceRefunded
+                        ? `Refunded LKR ${Number(reservation.refundedAmount || 0).toLocaleString()}`
+                        : "Not refunded"
+                      : "-"}
+                  </td>
+
+                  <td>
+                    {reservation.status === "CANCELLED"
+                      ? reservation.cancellationReason || "-"
+                      : "-"}
+                  </td>
+
                   <td className="table-actions">
                     <button onClick={() => setSelected(reservation)}>View</button>
-                    <button onClick={() => handleStatus(reservation.id, "CHECKED_IN")}>Check In</button>
-                    <button onClick={() => handleStatus(reservation.id, "CHECKED_OUT")}>Check Out</button>
-                    <button onClick={() => handleEarlyCheckout(reservation)}>Early Checkout</button>
+
+                    {reservation.status === "CONFIRMED" && (
+                      <>
+                        <button onClick={() => handleStatus(reservation.id, "CHECKED_IN")}>
+                          Check In
+                        </button>
+
+                        <button className="danger" onClick={() => handleCancelReservation(reservation)}>
+                          Cancel
+                        </button>
+                      </>
+                    )}
+
+                    {reservation.status === "CHECKED_IN" && (
+                      <>
+                        <button onClick={() => handleStatus(reservation.id, "CHECKED_OUT")}>
+                          Check Out
+                        </button>
+
+                        <button onClick={() => handleEarlyCheckout(reservation)}>
+                          Early Checkout
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -190,6 +296,7 @@ function ReservationManagement() {
           </table>
         </section>
       </section>
+
       <ReservationDetailModal reservation={selected} onClose={() => setSelected(null)} />
     </AppShell>
   );
