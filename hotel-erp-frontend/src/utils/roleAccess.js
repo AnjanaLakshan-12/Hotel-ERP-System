@@ -32,7 +32,7 @@ export const routePermissions = {
   "/admin/billing": [
     ROLES.RECEPTIONIST
   ],
-  "/admin/users": [
+  "/admin/manager": [
     ROLES.ADMIN,
     ROLES.MANAGER
   ]
@@ -70,10 +70,11 @@ export const navigationItems = [
     roles: routePermissions["/admin/billing"]
   },
   {
-    label: "Users",
-    path: "/admin/users",
-    roles: routePermissions["/admin/users"]
+    label: "Manager Panel",
+    path: "/admin/manager",
+    roles: routePermissions["/admin/manager"]
   }
+
 ];
 
 export const canAccess = (userRole, allowedRoles = []) => {

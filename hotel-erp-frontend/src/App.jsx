@@ -8,7 +8,7 @@ import RoomManagement from "./pages/admin/RoomManagement";
 import ReservationManagement from "./pages/admin/ReservationManagement";
 import BillingManagement from "./pages/admin/BillingManagement";
 import ServiceChargeManagement from "./pages/admin/ServiceChargeManagement";
-import UserManagement from "./pages/admin/UserManagement";
+import ManagerPanel  from "./pages/admin/ManagerPanel";
 import "./App.css";
 
 function App() {
@@ -23,7 +23,7 @@ function App() {
         <Route path="/admin/reservations" element={<ReservationManagement />} />
         <Route path="/admin/service-charges" element={<ServiceChargeManagement />} />
         <Route path="/admin/billing" element={<BillingManagement />} />
-        <Route path="/admin/users" element={<UserManagement />} />
+        <Route path="/admin/manager" element={<ManagerPanel />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
