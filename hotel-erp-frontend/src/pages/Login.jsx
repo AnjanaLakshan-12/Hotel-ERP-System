@@ -45,7 +45,7 @@ function Login() {
           </label>
           <button className="primary-button full" type="submit">Login</button>
         </form>
-        <p className="muted-link">Staff accounts are created by an administrator.</p>
+        <p className="muted-link">Forgot email or password? Please contact your administrator.</p>
       </section>
     </main>
   );
