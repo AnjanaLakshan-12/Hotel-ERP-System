@@ -82,6 +82,10 @@ public class ReservationService {
         reservation.setStatus(ReservationStatus.CONFIRMED);
         reservation.setAdvanceAmount(advanceAmount);
 
+        reservation.setCancellationDecision(CancellationDecision.NONE);
+        reservation.setAdvanceRefunded(false);
+        reservation.setRefundedAmount(BigDecimal.ZERO);
+
         if (advanceAmount.compareTo(BigDecimal.ZERO) > 0) {
             reservation.setAdvancePaymentMethod(request.getAdvancePaymentMethod());
         } else {
