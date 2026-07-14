@@ -144,18 +144,6 @@ function ManagerPanel() {
   };
 
 
-  const handleCompleteMaintenance = async (request) => {
-  setMessage("");
-
-  try {
-    await completeMaintenanceRequest(request.id);
-    setMessage("Maintenance completed and room returned to available");
-    loadData();
-  } catch (err) {
-    setMessage(err.response?.data || "Failed to complete maintenance request");
-  }
-};
-
   return (
     <AppShell
       title="Manager Panel"
