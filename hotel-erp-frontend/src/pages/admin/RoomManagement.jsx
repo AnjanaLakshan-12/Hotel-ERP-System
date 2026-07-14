@@ -3,15 +3,7 @@ import AppShell from "../../components/AppShell";
 import RoomCard from "../../components/RoomCard";
 import StatusBadge from "../../components/StatusBadge";
 import { createMaintenanceRequest } from "../../services/maintenanceRequestService";
-import { createRoom, deleteRoom, getRooms, updateRoom, updateRoomStatus } from "../../services/roomService";
-
-const emptyRoom = {
-  roomNumber: "",
-  roomType: "Standard",
-  pricePerNight: "",
-  floor: "",
-  status: "AVAILABLE"
-};
+import { getRooms, updateRoomStatus } from "../../services/roomService";
 
 const emptyMaintenanceRequest = {
   roomId: "",
@@ -22,9 +14,7 @@ const emptyMaintenanceRequest = {
 
 function RoomManagement() {
   const [rooms, setRooms] = useState([]);
-  const [form, setForm] = useState(emptyRoom);
   const [maintenanceForm, setMaintenanceForm] = useState(emptyMaintenanceRequest);
-  const [editingId, setEditingId] = useState(null);
   const [message, setMessage] = useState("");
 
   const [roomSearch, setRoomSearch] = useState("");
@@ -41,42 +31,11 @@ function RoomManagement() {
     loadRooms();
   }, []);
 
-  const handleChange = (event) => {
-    setForm({ ...form, [event.target.name]: event.target.value });
-  };
-
   const handleMaintenanceChange = (event) => {
     setMaintenanceForm({
       ...maintenanceForm,
       [event.target.name]: event.target.value
     });
-  };
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    setMessage("");
-
-    const payload = {
-      ...form,
-      pricePerNight: Number(form.pricePerNight),
-      floor: Number(form.floor)
-    };
-
-    try {
-      if (editingId) {
-        await updateRoom(editingId, payload);
-        setMessage("Room updated successfully");
-      } else {
-        await createRoom(payload);
-        setMessage("Room added successfully");
-      }
-
-      setForm(emptyRoom);
-      setEditingId(null);
-      loadRooms();
-    } catch (err) {
-      setMessage(err.response?.data || "Room operation failed");
-    }
   };
 
   const handleMaintenanceSubmit = async (event) => {
@@ -96,17 +55,6 @@ function RoomManagement() {
     }
   };
 
-  const handleEdit = (room) => {
-    setEditingId(room.id);
-    setForm({
-      roomNumber: room.roomNumber,
-      roomType: room.roomType,
-      pricePerNight: room.pricePerNight,
-      floor: room.floor,
-      status: room.status
-    });
-  };
-
   const handleStatus = async (id, status) => {
     setMessage("");
 
@@ -116,18 +64,6 @@ function RoomManagement() {
       loadRooms();
     } catch (err) {
       setMessage(err.response?.data || "Failed to update room status");
-    }
-  };
-
-  const handleDelete = async (id) => {
-    setMessage("");
-
-    try {
-      await deleteRoom(id);
-      setMessage("Room deleted successfully");
-      loadRooms();
-    } catch (err) {
-      setMessage(err.response?.data || "Failed to delete room");
     }
   };
 
@@ -161,48 +97,6 @@ function RoomManagement() {
       {message && <div className="alert">{message}</div>}
 
       <section className="management-grid">
-        <form className="panel form-grid two" onSubmit={handleSubmit}>
-          <h3 className="span-two">{editingId ? "Update Room" : "Add Room"}</h3>
-
-          <label>
-            Room Number
-            <input name="roomNumber" value={form.roomNumber} onChange={handleChange} required />
-          </label>
-
-          <label>
-            Room Type
-            <select name="roomType" value={form.roomType} onChange={handleChange}>
-              <option>Standard</option>
-              <option>Deluxe</option>
-              <option>Suite</option>
-              <option>Family</option>
-            </select>
-          </label>
-
-          <label>
-            Price Per Night
-            <input name="pricePerNight" type="number" value={form.pricePerNight} onChange={handleChange} required />
-          </label>
-
-          <label>
-            Floor
-            <input name="floor" type="number" min="1" value={form.floor} onChange={handleChange} required />
-          </label>
-
-          <label>
-            Status
-            <select name="status" value={form.status} onChange={handleChange}>
-              <option value="AVAILABLE">Available</option>
-              <option value="OCCUPIED">Occupied</option>
-              <option value="MAINTENANCE">Maintenance</option>
-            </select>
-          </label>
-
-          <button className="primary-button span-two" type="submit">
-            {editingId ? "Save Changes" : "Add Room"}
-          </button>
-        </form>
-
         <form className="panel form-grid two" onSubmit={handleMaintenanceSubmit}>
           <h3 className="span-two">Submit Maintenance Report</h3>
           <p className="panel-note span-two">
@@ -309,9 +203,9 @@ function RoomManagement() {
                   <td>LKR {Number(room.pricePerNight || 0).toLocaleString()}</td>
                   <td><StatusBadge status={room.status} /></td>
                   <td className="table-actions">
-                    <button onClick={() => handleEdit(room)}>Edit</button>
-                    <button onClick={() => handleStatus(room.id, "AVAILABLE")}>Available</button>
-                    <button className="danger" onClick={() => handleDelete(room.id)}>Delete</button>
+                    <button type="button" onClick={() => handleStatus(room.id, "AVAILABLE")}>
+                      Available
+                    </button>
                   </td>
                 </tr>
               ))}

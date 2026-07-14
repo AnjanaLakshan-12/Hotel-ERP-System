@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import AppShell from "../../components/AppShell";
 import StatCard from "../../components/StatCard";
 import StatusBadge from "../../components/StatusBadge";
-import { getRooms, updateRoomStatus } from "../../services/roomService";
+import { createRoom, deleteRoom, getRooms, updateRoom, updateRoomStatus } from "../../services/roomService";
 import {
   activateUser,
   createUser,
@@ -21,6 +21,14 @@ const emptyUser = {
   password: "",
   role: "RECEPTIONIST",
   active: true
+};
+
+const emptyRoom = {
+  roomNumber: "",
+  roomType: "Standard",
+  pricePerNight: "",
+  floor: "",
+  status: "AVAILABLE"
 };
 
 const roleOptions = ["ADMIN", "MANAGER", "RECEPTIONIST", "SERVICE_STAFF"];
@@ -82,6 +90,8 @@ function AdminDashboard() {
 
   const [form, setForm] = useState(emptyUser);
   const [editingId, setEditingId] = useState(null);
+  const [roomForm, setRoomForm] = useState(emptyRoom);
+  const [editingRoomId, setEditingRoomId] = useState(null);
   const [message, setMessage] = useState("");
 
   const loadData = async () => {
@@ -195,6 +205,76 @@ function AdminDashboard() {
       loadData();
     } catch (err) {
       setMessage(getErrorMessage(err, "Failed to delete user"));
+    }
+  };
+
+  const handleRoomFormChange = (event) => {
+    const { name, value } = event.target;
+
+    setRoomForm({
+      ...roomForm,
+      [name]: value
+    });
+  };
+
+  const handleRoomSubmit = async (event) => {
+    event.preventDefault();
+    setMessage("");
+
+    const payload = {
+      ...roomForm,
+      pricePerNight: Number(roomForm.pricePerNight),
+      floor: Number(roomForm.floor)
+    };
+
+    try {
+      if (editingRoomId) {
+        await updateRoom(editingRoomId, payload);
+        setMessage("Room updated successfully");
+      } else {
+        await createRoom(payload);
+        setMessage("Room added successfully");
+      }
+
+      setRoomForm(emptyRoom);
+      setEditingRoomId(null);
+      loadData();
+    } catch (err) {
+      setMessage(getErrorMessage(err, "Room operation failed"));
+    }
+  };
+
+  const handleRoomEdit = (room) => {
+    setEditingRoomId(room.id);
+    setRoomForm({
+      roomNumber: room.roomNumber,
+      roomType: room.roomType,
+      pricePerNight: room.pricePerNight,
+      floor: room.floor,
+      status: room.status
+    });
+  };
+
+  const handleCancelRoomEdit = () => {
+    setEditingRoomId(null);
+    setRoomForm(emptyRoom);
+  };
+
+  const handleRoomDelete = async (id) => {
+    const confirmed = window.confirm("Delete this room permanently? Use maintenance status if the room should only be unavailable.");
+
+    if (!confirmed) {
+      return;
+    }
+
+    setMessage("");
+
+    try {
+      await deleteRoom(id);
+      setMessage("Room deleted successfully");
+      loadData();
+    } catch (err) {
+      setMessage(getErrorMessage(err, "Failed to delete room"));
     }
   };
 
@@ -447,6 +527,81 @@ function AdminDashboard() {
         <section id="rooms-admin" className="panel table-panel span-wide">
           <h3>Room Administration</h3>
 
+          <form className="panel form-grid two span-wide" onSubmit={handleRoomSubmit}>
+            <h3 className="span-two">{editingRoomId ? "Update Room" : "Add Room"}</h3>
+
+            <label>
+              Room Number
+              <input
+                name="roomNumber"
+                value={roomForm.roomNumber}
+                onChange={handleRoomFormChange}
+                required
+              />
+            </label>
+
+            <label>
+              Room Type
+              <select
+                name="roomType"
+                value={roomForm.roomType}
+                onChange={handleRoomFormChange}
+              >
+                <option>Standard</option>
+                <option>Deluxe</option>
+                <option>Suite</option>
+                <option>Family</option>
+              </select>
+            </label>
+
+            <label>
+              Price Per Night
+              <input
+                name="pricePerNight"
+                type="number"
+                min="0"
+                value={roomForm.pricePerNight}
+                onChange={handleRoomFormChange}
+                required
+              />
+            </label>
+
+            <label>
+              Floor
+              <input
+                name="floor"
+                type="number"
+                min="1"
+                value={roomForm.floor}
+                onChange={handleRoomFormChange}
+                required
+              />
+            </label>
+
+            <label className="span-two">
+              Status
+              <select
+                name="status"
+                value={roomForm.status}
+                onChange={handleRoomFormChange}
+              >
+                <option value="AVAILABLE">Available</option>
+                <option value="OCCUPIED">Occupied</option>
+                <option value="MAINTENANCE">Maintenance</option>
+              </select>
+            </label>
+
+            <button className="primary-button span-two" type="submit">
+              {editingRoomId ? "Save Room Changes" : "Add Room"}
+            </button>
+
+            {editingRoomId && (
+              <button className="secondary-button span-two" type="button" onClick={handleCancelRoomEdit}>
+                Cancel Room Edit
+              </button>
+            )}
+          </form>
+
           <table>
             <thead>
               <tr>
@@ -470,11 +625,20 @@ function AdminDashboard() {
                     <StatusBadge status={room.status} />
                   </td>
                   <td className="table-actions">
+                    <button type="button" onClick={() => handleRoomEdit(room)}>
+                      Edit
+                    </button>
+
                     <button type="button" onClick={() => handleRoomAvailable(room.id)}>
                       Set Available
                     </button>
+
                     <button type="button" onClick={() => handleRoomMaintenance(room.id)}>
                       Deactivate Room
+                    </button>
+
+                    <button className="danger" type="button" onClick={() => handleRoomDelete(room.id)}>
+                      Delete
                     </button>
                   </td>
                 </tr>
