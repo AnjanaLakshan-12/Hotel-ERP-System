@@ -30,6 +30,7 @@ export const routePermissions = {
     ROLES.SERVICE_STAFF
   ],
   "/admin/billing": [
+    ROLES.ADMIN,
     ROLES.RECEPTIONIST
   ],
   "/admin/manager": [
