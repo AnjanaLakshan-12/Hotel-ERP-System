@@ -30,4 +30,7 @@ public class AppUser {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private UserRole role = UserRole.RECEPTIONIST;
+
+    @Column(nullable = false)
+    private Boolean active = true;
 }
