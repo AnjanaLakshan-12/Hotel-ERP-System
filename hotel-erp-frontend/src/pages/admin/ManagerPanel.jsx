@@ -2,14 +2,19 @@ import { useEffect, useState } from "react";
 import AppShell from "../../components/AppShell";
 import StatusBadge from "../../components/StatusBadge";
 import StatCard from "../../components/StatCard";
-import { getReservations, updateReservationStatus } from "../../services/reservationService";
 import { getBills } from "../../services/billService";
 import {
   approveMaintenanceRequest,
   completeMaintenanceRequest,
   getMaintenanceRequests,
-  rejectMaintenanceRequest
+  rejectMaintenanceRequest,
 } from "../../services/maintenanceRequestService";
+
+import {
+  getReservations,
+  processReservationCancellation
+} from "../../services/reservationService";
+
 import { formatReservationNumber } from "../../utils/reservationNumber";
 
 function ManagerPanel() {
@@ -54,9 +59,6 @@ function ManagerPanel() {
     bill.status === "UNPAID"
   );
 
-  const cancellationRequests = reservations.filter((reservation) =>
-    reservation.status === "PENDING_CANCEL"
-  );
 
   const pendingMaintenanceRequests = maintenanceRequests.filter((request) =>
     request.status === "PENDING"
@@ -65,6 +67,10 @@ function ManagerPanel() {
   const approvedMaintenanceRequests = maintenanceRequests.filter((request) =>
     request.status === "APPROVED"
   );
+
+  const cancellationRequests = reservations.filter((reservation) =>
+  reservation.status === "CANCELLATION_REQUESTED"
+);
 
   const handleNoteChange = (requestId, value) => {
     setManagerNotes({
@@ -125,23 +131,36 @@ function ManagerPanel() {
     }
   };
 
-  const handleCancellationDecision = async (reservationId, decision) => {
-    setMessage("");
 
-    try {
-      if (decision === "APPROVE") {
-        await updateReservationStatus(reservationId, "CANCELLED");
-        setMessage("Cancellation request approved");
-      } else {
-        await updateReservationStatus(reservationId, "CONFIRMED");
-        setMessage("Cancellation request rejected");
-      }
+  const handleCancellationDecision = async (reservation, decision) => {
+  let partialRefundAmount = null;
 
-      loadData();
-    } catch (err) {
-      setMessage(err.response?.data || "Failed to update cancellation request");
+  if (decision === "APPROVED_PARTIAL_REFUND") {
+    const amount = window.prompt("Enter partial refund amount", "0");
+
+    if (amount === null) {
+      return;
     }
-  };
+
+    partialRefundAmount = Number(amount);
+  }
+
+  setMessage("");
+
+  try {
+    await processReservationCancellation(reservation.id, {
+      decision,
+      partialRefundAmount
+    });
+
+    setMessage("Cancellation request reviewed successfully");
+    loadData();
+  } catch (err) {
+    setMessage(err.response?.data || "Failed to process cancellation request");
+  }
+};
+  
+
 
 
   return (
@@ -300,17 +319,26 @@ function ManagerPanel() {
                       {reservation.customer?.firstName} {reservation.customer?.lastName}
                     </td>
                     <td>{reservation.checkInDate} to {reservation.checkOutDate}</td>
-                    <td className="table-actions">
-                      <button onClick={() => handleCancellationDecision(reservation.id, "APPROVE")}>
-                        Approve
-                      </button>
-                      <button
-                        className="danger"
-                        onClick={() => handleCancellationDecision(reservation.id, "REJECT")}
-                      >
-                        Reject
-                      </button>
-                    </td>
+<td className="table-actions">
+  <button onClick={() => handleCancellationDecision(reservation, "APPROVED_FULL_REFUND")}>
+    Full Refund
+  </button>
+
+  <button onClick={() => handleCancellationDecision(reservation, "APPROVED_PARTIAL_REFUND")}>
+    Partial Refund
+  </button>
+
+  <button onClick={() => handleCancellationDecision(reservation, "APPROVED_NO_REFUND")}>
+    No Refund
+  </button>
+
+  <button
+    className="danger"
+    onClick={() => handleCancellationDecision(reservation, "REJECTED")}
+  >
+    Reject
+  </button>
+</td>
                   </tr>
                 ))
               )}

@@ -11,5 +11,11 @@ export const earlyCheckout = (id, actualCheckoutDate) =>
   api.patch(`/api/reservations/${id}/early-checkout?actualCheckoutDate=${actualCheckoutDate}`);
 
 
-export const cancelReservation = (id, cancellationData) =>
-  api.patch(`/api/reservations/${id}/cancel`, cancellationData);
+// export const cancelReservation = (id, cancellationData) =>
+//   api.patch(`/api/reservations/${id}/cancel`, cancellationData);
+
+export const requestReservationCancellation = (id, request) =>
+  api.patch(`/api/reservations/${id}/request-cancellation`, request);
+
+export const processReservationCancellation = (id, request) =>
+  api.patch(`/api/reservations/${id}/process-cancellation`, request);

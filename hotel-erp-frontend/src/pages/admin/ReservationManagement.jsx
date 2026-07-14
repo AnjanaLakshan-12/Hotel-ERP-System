@@ -5,10 +5,10 @@ import StatusBadge from "../../components/StatusBadge";
 import { getCustomers } from "../../services/customerService";
 import { getRooms } from "../../services/roomService";
 import {
-  cancelReservation,
   createReservation,
   earlyCheckout,
   getReservations,
+  requestReservationCancellation,
   updateReservationStatus
 } from "../../services/reservationService";
 import { formatPaymentMethod, paymentMethods } from "../../utils/paymentMethod";
@@ -94,34 +94,29 @@ function ReservationManagement() {
     }
   };
 
-  const handleCancelReservation = async (reservation) => {
-    const cancellationReason = window.prompt(
-      "Enter cancellation reason",
-      "Guest requested cancellation"
-    );
+const handleCancellationRequest = async (reservation) => {
+  const cancellationReason = window.prompt(
+    "Enter cancellation reason",
+    "Guest requested cancellation"
+  );
 
-    if (!cancellationReason) {
-      return;
-    }
+  if (!cancellationReason) {
+    return;
+  }
 
-    setMessage("");
+  setMessage("");
 
-    try {
-      const response = await cancelReservation(reservation.id, {
-        cancellationReason
-      });
+  try {
+    await requestReservationCancellation(reservation.id, {
+      cancellationReason
+    });
 
-      const cancelledReservation = response.data;
-      const refundMessage = cancelledReservation.advanceRefunded
-        ? ` Advance refunded: LKR ${Number(cancelledReservation.refundedAmount || 0).toLocaleString()}.`
-        : " Advance not refunded due to cancellation policy.";
-
-      setMessage(`Reservation cancelled and room released.${refundMessage}`);
-      loadData();
-    } catch (err) {
-      setMessage(getErrorMessage(err, "Reservation cancellation failed"));
-    }
-  };
+    setMessage("Cancellation request sent to manager for review");
+    loadData();
+  } catch (err) {
+    setMessage(getErrorMessage(err, "Failed to send cancellation request"));
+  }
+};
 
   const handleStatus = async (id, status) => {
     await updateReservationStatus(id, status);
@@ -271,19 +266,26 @@ function ReservationManagement() {
                     <StatusBadge status={reservation.status} />
                   </td>
 
-                  <td>
-                    {reservation.status === "CANCELLED"
-                      ? reservation.advanceRefunded
-                        ? `Refunded LKR ${Number(reservation.refundedAmount || 0).toLocaleString()}`
-                        : "Not refunded"
-                      : "-"}
-                  </td>
+<td>
+  {reservation.status === "CANCELLATION_REQUESTED" && "Waiting manager review"}
 
-                  <td>
-                    {reservation.status === "CANCELLED"
-                      ? reservation.cancellationReason || "-"
-                      : "-"}
-                  </td>
+  {reservation.status === "CANCELLED" &&
+    (reservation.advanceRefunded
+      ? `Refunded LKR ${Number(reservation.refundedAmount || 0).toLocaleString()}`
+      : "Not refunded")}
+
+  {reservation.status !== "CANCELLATION_REQUESTED" &&
+    reservation.status !== "CANCELLED" &&
+    "-"}
+</td>
+
+
+
+<td>
+  {reservation.status === "CANCELLATION_REQUESTED" || reservation.status === "CANCELLED"
+    ? reservation.cancellationReason || "-"
+    : "-"}
+</td>
 
                   <td className="table-actions">
                     <button type="button" onClick={() => setSelected(reservation)}>
@@ -296,13 +298,13 @@ function ReservationManagement() {
                           Check In
                         </button>
 
-                        <button
-                          type="button"
-                          className="danger"
-                          onClick={() => handleCancelReservation(reservation)}
-                        >
-                          Cancel
-                        </button>
+<button
+  type="button"
+  className="danger"
+  onClick={() => handleCancellationRequest(reservation)}
+>
+  Request Cancel
+</button>
                       </>
                     )}
 
