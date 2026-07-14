@@ -1,6 +1,7 @@
 package org.example.hotelerpbackend.controller;
 
 import org.example.hotelerpbackend.dto.MaintenanceRequestDto;
+import org.example.hotelerpbackend.enums.MaintenancePriority;
 import org.example.hotelerpbackend.service.MaintenanceRequestService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -38,10 +39,11 @@ public class MaintenanceRequestController {
     @PatchMapping("/{id}/approve")
     public ResponseEntity<?> approveRequest(
             @PathVariable Long id,
-            @RequestParam(required = false) String managerNote
+            @RequestParam(required = false) String managerNote,
+            @RequestParam(defaultValue = "MEDIUM") MaintenancePriority priority
     ) {
         try {
-            return ResponseEntity.ok(maintenanceRequestService.approveRequest(id, managerNote));
+            return ResponseEntity.ok(maintenanceRequestService.approveRequest(id, managerNote,priority));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
