@@ -27,6 +27,11 @@ function RoomManagement() {
   const [editingId, setEditingId] = useState(null);
   const [message, setMessage] = useState("");
 
+  const [roomSearch, setRoomSearch] = useState("");
+  const [roomStatusFilter, setRoomStatusFilter] = useState("ALL");
+  const [roomTypeFilter, setRoomTypeFilter] = useState("ALL");
+  const [floorFilter, setFloorFilter] = useState("ALL");
+
   const loadRooms = async () => {
     const response = await getRooms();
     setRooms(response.data);
@@ -125,6 +130,27 @@ function RoomManagement() {
       setMessage(err.response?.data || "Failed to delete room");
     }
   };
+
+  const floors = [...new Set(rooms.map((room) => room.floor).filter(Boolean))].sort(
+    (a, b) => Number(a) - Number(b)
+  );
+
+  const filteredRooms = rooms.filter((room) => {
+    const matchesSearch = String(room.roomNumber || "")
+      .toLowerCase()
+      .includes(roomSearch.toLowerCase());
+
+    const matchesStatus =
+      roomStatusFilter === "ALL" || room.status === roomStatusFilter;
+
+    const matchesType =
+      roomTypeFilter === "ALL" || room.roomType === roomTypeFilter;
+
+    const matchesFloor =
+      floorFilter === "ALL" || String(room.floor) === floorFilter;
+
+    return matchesSearch && matchesStatus && matchesType && matchesFloor;
+  });
 
   return (
     <AppShell title="Room Management" subtitle="Control room inventory, pricing, availability, and maintenance reports.">
@@ -230,6 +256,38 @@ function RoomManagement() {
         <section className="panel table-panel span-wide">
           <h3>Room Inventory</h3>
 
+          <div className="table-filters">
+            <input
+              placeholder="Search room number"
+              value={roomSearch}
+              onChange={(event) => setRoomSearch(event.target.value)}
+            />
+
+            <select value={roomStatusFilter} onChange={(event) => setRoomStatusFilter(event.target.value)}>
+              <option value="ALL">All Status</option>
+              <option value="AVAILABLE">Available</option>
+              <option value="OCCUPIED">Occupied</option>
+              <option value="MAINTENANCE">Maintenance</option>
+            </select>
+
+            <select value={roomTypeFilter} onChange={(event) => setRoomTypeFilter(event.target.value)}>
+              <option value="ALL">All Types</option>
+              <option value="Standard">Standard</option>
+              <option value="Deluxe">Deluxe</option>
+              <option value="Suite">Suite</option>
+              <option value="Family">Family</option>
+            </select>
+
+            <select value={floorFilter} onChange={(event) => setFloorFilter(event.target.value)}>
+              <option value="ALL">All Floors</option>
+              {floors.map((floor) => (
+                <option key={floor} value={floor}>
+                  Floor {floor}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <table>
             <thead>
               <tr>
@@ -243,7 +301,7 @@ function RoomManagement() {
             </thead>
 
             <tbody>
-              {rooms.map((room) => (
+              {filteredRooms.map((room) => (
                 <tr key={room.id}>
                   <td>{room.roomNumber}</td>
                   <td>{room.roomType}</td>

@@ -53,6 +53,10 @@ function ReservationManagement() {
   const [selected, setSelected] = useState(null);
   const [message, setMessage] = useState("");
 
+  const [reservationSearch, setReservationSearch] = useState("");
+  const [reservationStatusFilter, setReservationStatusFilter] = useState("ALL");
+  const [reservationPaymentFilter, setReservationPaymentFilter] = useState("ALL");
+
   const loadData = async () => {
     const [reservationResponse, customerResponse, roomResponse] = await Promise.all([
       getReservations(),
@@ -94,29 +98,29 @@ function ReservationManagement() {
     }
   };
 
-const handleCancellationRequest = async (reservation) => {
-  const cancellationReason = window.prompt(
-    "Enter cancellation reason",
-    "Guest requested cancellation"
-  );
+  const handleCancellationRequest = async (reservation) => {
+    const cancellationReason = window.prompt(
+      "Enter cancellation reason",
+      "Guest requested cancellation"
+    );
 
-  if (!cancellationReason) {
-    return;
-  }
+    if (!cancellationReason) {
+      return;
+    }
 
-  setMessage("");
+    setMessage("");
 
-  try {
-    await requestReservationCancellation(reservation.id, {
-      cancellationReason
-    });
+    try {
+      await requestReservationCancellation(reservation.id, {
+        cancellationReason
+      });
 
-    setMessage("Cancellation request sent to manager for review");
-    loadData();
-  } catch (err) {
-    setMessage(getErrorMessage(err, "Failed to send cancellation request"));
-  }
-};
+      setMessage("Cancellation request sent to manager for review");
+      loadData();
+    } catch (err) {
+      setMessage(getErrorMessage(err, "Failed to send cancellation request"));
+    }
+  };
 
   const handleStatus = async (id, status) => {
     await updateReservationStatus(id, status);
@@ -143,6 +147,26 @@ const handleCancellationRequest = async (reservation) => {
       setMessage(getErrorMessage(err, "Early checkout failed"));
     }
   };
+
+  const filteredReservations = reservations.filter((reservation) => {
+    const reservationNo = formatReservationNumber(reservation.id);
+    const guestName = `${reservation.customer?.firstName || ""} ${reservation.customer?.lastName || ""}`;
+    const roomNumber = reservation.room?.roomNumber || "";
+
+    const matchesSearch =
+      reservationNo.toLowerCase().includes(reservationSearch.toLowerCase()) ||
+      guestName.toLowerCase().includes(reservationSearch.toLowerCase()) ||
+      String(roomNumber).toLowerCase().includes(reservationSearch.toLowerCase());
+
+    const matchesStatus =
+      reservationStatusFilter === "ALL" || reservation.status === reservationStatusFilter;
+
+    const matchesPayment =
+      reservationPaymentFilter === "ALL" ||
+      reservation.advancePaymentMethod === reservationPaymentFilter;
+
+    return matchesSearch && matchesStatus && matchesPayment;
+  });
 
   return (
     <AppShell title="Reservation Management" subtitle="Book rooms and manage guest stay status.">
@@ -231,6 +255,36 @@ const handleCancellationRequest = async (reservation) => {
         <section className="panel table-panel">
           <h3>Reservations</h3>
 
+          <div className="table-filters">
+            <input
+              placeholder="Search reservation, guest, or room"
+              value={reservationSearch}
+              onChange={(event) => setReservationSearch(event.target.value)}
+            />
+
+            <select
+              value={reservationStatusFilter}
+              onChange={(event) => setReservationStatusFilter(event.target.value)}
+            >
+              <option value="ALL">All Status</option>
+              <option value="CONFIRMED">Confirmed</option>
+              <option value="CHECKED_IN">Checked In</option>
+              <option value="CHECKED_OUT">Checked Out</option>
+              <option value="CANCELLATION_REQUESTED">Cancellation Requested</option>
+              <option value="CANCELLED">Cancelled</option>
+            </select>
+
+            <select
+              value={reservationPaymentFilter}
+              onChange={(event) => setReservationPaymentFilter(event.target.value)}
+            >
+              <option value="ALL">All Payments</option>
+              <option value="CASH">Cash</option>
+              <option value="CARD">Card</option>
+              <option value="ONLINE_TRANSFER">Online Transfer</option>
+            </select>
+          </div>
+
           <table>
             <thead>
               <tr>
@@ -248,7 +302,7 @@ const handleCancellationRequest = async (reservation) => {
             </thead>
 
             <tbody>
-              {reservations.map((reservation) => (
+              {filteredReservations.map((reservation) => (
                 <tr key={reservation.id}>
                   <td>{formatReservationNumber(reservation.id)}</td>
                   <td>
@@ -266,26 +320,24 @@ const handleCancellationRequest = async (reservation) => {
                     <StatusBadge status={reservation.status} />
                   </td>
 
-<td>
-  {reservation.status === "CANCELLATION_REQUESTED" && "Waiting manager review"}
+                  <td>
+                    {reservation.status === "CANCELLATION_REQUESTED" && "Waiting manager review"}
 
-  {reservation.status === "CANCELLED" &&
-    (reservation.advanceRefunded
-      ? `Refunded LKR ${Number(reservation.refundedAmount || 0).toLocaleString()}`
-      : "Not refunded")}
+                    {reservation.status === "CANCELLED" &&
+                      (reservation.advanceRefunded
+                        ? `Refunded LKR ${Number(reservation.refundedAmount || 0).toLocaleString()}`
+                        : "Not refunded")}
 
-  {reservation.status !== "CANCELLATION_REQUESTED" &&
-    reservation.status !== "CANCELLED" &&
-    "-"}
-</td>
+                    {reservation.status !== "CANCELLATION_REQUESTED" &&
+                      reservation.status !== "CANCELLED" &&
+                      "-"}
+                  </td>
 
-
-
-<td>
-  {reservation.status === "CANCELLATION_REQUESTED" || reservation.status === "CANCELLED"
-    ? reservation.cancellationReason || "-"
-    : "-"}
-</td>
+                  <td>
+                    {reservation.status === "CANCELLATION_REQUESTED" || reservation.status === "CANCELLED"
+                      ? reservation.cancellationReason || "-"
+                      : "-"}
+                  </td>
 
                   <td className="table-actions">
                     <button type="button" onClick={() => setSelected(reservation)}>
@@ -298,13 +350,13 @@ const handleCancellationRequest = async (reservation) => {
                           Check In
                         </button>
 
-<button
-  type="button"
-  className="danger"
-  onClick={() => handleCancellationRequest(reservation)}
->
-  Request Cancel
-</button>
+                        <button
+                          type="button"
+                          className="danger"
+                          onClick={() => handleCancellationRequest(reservation)}
+                        >
+                          Request Cancel
+                        </button>
                       </>
                     )}
 

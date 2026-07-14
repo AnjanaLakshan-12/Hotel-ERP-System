@@ -753,4 +753,29 @@ button:disabled {
   }
 }
 
+.table-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.table-filters input,
+.table-filters select {
+  min-width: 180px;
+  padding: 10px 12px;
+  border: 1px solid #d7dee8;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 14px;
+}
+
+.table-filters input:focus,
+.table-filters select:focus {
+  outline: none;
+  border-color: #b88918;
+  box-shadow: 0 0 0 3px rgba(184, 137, 24, 0.12);
+}
+
 }

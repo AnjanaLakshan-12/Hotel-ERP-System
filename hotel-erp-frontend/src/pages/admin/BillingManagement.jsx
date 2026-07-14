@@ -44,6 +44,10 @@ function BillingManagement() {
   const [message, setMessage] = useState("");
   const [selectedPaymentMethods, setSelectedPaymentMethods] = useState({});
 
+  const [invoiceSearch, setInvoiceSearch] = useState("");
+  const [invoiceStatusFilter, setInvoiceStatusFilter] = useState("ALL");
+  const [invoicePaymentFilter, setInvoicePaymentFilter] = useState("ALL");
+
   const loadData = async () => {
     const [billResponse, reservationResponse] = await Promise.all([
       getBills(),
@@ -135,6 +139,23 @@ function BillingManagement() {
     reservation.status === "CHECKED_OUT"
   );
 
+  const filteredBills = bills.filter((bill) => {
+    const invoiceNo = formatInvoiceNumber(bill.id);
+    const reservationNo = formatReservationNumber(bill.reservation?.id);
+
+    const matchesSearch =
+      invoiceNo.toLowerCase().includes(invoiceSearch.toLowerCase()) ||
+      reservationNo.toLowerCase().includes(invoiceSearch.toLowerCase());
+
+    const matchesStatus =
+      invoiceStatusFilter === "ALL" || bill.status === invoiceStatusFilter;
+
+    const matchesPayment =
+      invoicePaymentFilter === "ALL" || bill.paymentMethod === invoicePaymentFilter;
+
+    return matchesSearch && matchesStatus && matchesPayment;
+  });
+
   return (
     <AppShell
       title="Invoice Management"
@@ -174,12 +195,11 @@ function BillingManagement() {
             Reservation
             <select value={reservationId} onChange={(event) => setReservationId(event.target.value)} required>
               <option value="">Select checked-out reservation</option>
-              {finalInvoiceReservations
-                .map((reservation) => (
-                  <option key={reservation.id} value={reservation.id}>
-                    {formatReservationNumber(reservation.id)} - {reservation.customer?.firstName} {reservation.customer?.lastName} - Room {reservation.room?.roomNumber}
-                  </option>
-                ))}
+              {finalInvoiceReservations.map((reservation) => (
+                <option key={reservation.id} value={reservation.id}>
+                  {formatReservationNumber(reservation.id)} - {reservation.customer?.firstName} {reservation.customer?.lastName} - Room {reservation.room?.roomNumber}
+                </option>
+              ))}
             </select>
           </label>
           <button className="primary-button" type="submit">Generate Final Invoice</button>
@@ -187,6 +207,29 @@ function BillingManagement() {
 
         <section className="panel table-panel span-wide">
           <h3>Invoices</h3>
+
+          <div className="table-filters">
+            <input
+              placeholder="Search invoice or reservation"
+              value={invoiceSearch}
+              onChange={(event) => setInvoiceSearch(event.target.value)}
+            />
+
+            <select value={invoiceStatusFilter} onChange={(event) => setInvoiceStatusFilter(event.target.value)}>
+              <option value="ALL">All Status</option>
+              <option value="PAID">Paid</option>
+              <option value="UNPAID">Unpaid</option>
+              <option value="CANCELLED">Cancelled</option>
+            </select>
+
+            <select value={invoicePaymentFilter} onChange={(event) => setInvoicePaymentFilter(event.target.value)}>
+              <option value="ALL">All Payments</option>
+              <option value="CASH">Cash</option>
+              <option value="CARD">Card</option>
+              <option value="ONLINE_TRANSFER">Online Transfer</option>
+            </select>
+          </div>
+
           <table>
             <thead>
               <tr>
@@ -201,7 +244,7 @@ function BillingManagement() {
               </tr>
             </thead>
             <tbody>
-              {bills.map((bill) => (
+              {filteredBills.map((bill) => (
                 <tr key={bill.id}>
                   <td>{formatInvoiceNumber(bill.id)}</td>
                   <td>{formatReservationNumber(bill.reservation?.id)}</td>
