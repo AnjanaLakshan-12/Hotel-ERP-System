@@ -1,4 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
+import logo from "../assets/hotel-logo.png";
 import { clearStoredUser, getStoredUser } from "../services/userService";
 import { canAccess, navigationItems } from "../utils/roleAccess";
 
@@ -14,7 +15,7 @@ function Navbar() {
   return (
     <aside className="sidebar">
       <div className="brand-block">
-        <div className="brand-mark">H</div>
+        <img src={logo} alt="Hotel ERP Logo" className="brand-logo" />
         <div>
           <h1>Hotel ERP</h1>
           <p>Operations Suite</p>
