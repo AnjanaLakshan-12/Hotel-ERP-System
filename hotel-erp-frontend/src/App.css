@@ -227,6 +227,26 @@
   color: var(--muted);
 }
 
+.dashboard-section {
+  margin-bottom: 28px;
+}
+
+.section-heading {
+  margin-bottom: 14px;
+}
+
+.section-heading h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #0f172a;
+}
+
+.section-heading p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
 .management-grid {
   display: grid;
   grid-template-columns: 380px minmax(0, 1fr);

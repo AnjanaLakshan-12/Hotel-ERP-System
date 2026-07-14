@@ -89,7 +89,7 @@ function RoomManagement() {
   });
 
   return (
-    <AppShell title="Room Management" subtitle="Control room inventory, pricing, availability, and maintenance reports.">
+    <AppShell title="Room Management" subtitle="Control room availability, and maintenance reports.">
       <section className="room-grid">
         {rooms.slice(0, 4).map((room) => <RoomCard key={room.id} room={room} />)}
       </section>

@@ -3,47 +3,58 @@ package org.example.hotelerpbackend.service;
 import org.example.hotelerpbackend.dto.DashboardResponse;
 import org.example.hotelerpbackend.entity.Bill;
 import org.example.hotelerpbackend.enums.BillStatus;
+import org.example.hotelerpbackend.enums.ReservationStatus;
 import org.example.hotelerpbackend.enums.RoomStatus;
 import org.example.hotelerpbackend.repository.BillRepository;
-import org.example.hotelerpbackend.repository.CustomerRepository;
 import org.example.hotelerpbackend.repository.ReservationRepository;
 import org.example.hotelerpbackend.repository.RoomRepository;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @Service
 public class DashboardService {
-    private final CustomerRepository customerRepository;
     private final RoomRepository roomRepository;
     private final ReservationRepository reservationRepository;
     private final BillRepository billRepository;
 
     public DashboardService(
-            CustomerRepository customerRepository,
             RoomRepository roomRepository,
             ReservationRepository reservationRepository,
             BillRepository billRepository
     ) {
-        this.customerRepository = customerRepository;
         this.roomRepository = roomRepository;
         this.reservationRepository = reservationRepository;
         this.billRepository = billRepository;
     }
 
     public DashboardResponse getSummary() {
+        LocalDate today = LocalDate.now();
+
         BigDecimal totalRevenue = billRepository.findByStatus(BillStatus.PAID)
                 .stream()
-                .map(Bill::getTotalAmount)
+                .map(bill -> bill.getTotalAmount() == null ? BigDecimal.ZERO : bill.getTotalAmount())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         return new DashboardResponse(
-                customerRepository.count(),
+                reservationRepository.countByCheckInDate(today),
+                reservationRepository.countByStatus(ReservationStatus.CONFIRMED),
+                reservationRepository.countByStatus(ReservationStatus.CHECKED_IN),
+
                 roomRepository.count(),
-                roomRepository.findByStatus(RoomStatus.AVAILABLE).size(),
-                roomRepository.findByStatus(RoomStatus.OCCUPIED).size(),
-                reservationRepository.count(),
-                billRepository.findByStatus(BillStatus.UNPAID).size(),
+                roomRepository.countByStatus(RoomStatus.AVAILABLE),
+                roomRepository.countByStatus(RoomStatus.OCCUPIED),
+                roomRepository.countByStatus(RoomStatus.MAINTENANCE),
+
+                reservationRepository.countByCheckInDate(today),
+                reservationRepository.countByStatus(ReservationStatus.CHECKED_IN),
+                reservationRepository.countByStatus(ReservationStatus.CHECKED_OUT),
+                reservationRepository.countByStatus(ReservationStatus.CANCELLED),
+                reservationRepository.countByStatus(ReservationStatus.CANCELLATION_REQUESTED),
+
+                billRepository.countByStatus(BillStatus.PAID),
+                billRepository.countByStatus(BillStatus.UNPAID),
                 totalRevenue
         );
     }

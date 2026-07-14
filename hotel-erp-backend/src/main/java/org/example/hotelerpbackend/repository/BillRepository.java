@@ -11,4 +11,7 @@ public interface BillRepository extends JpaRepository<Bill, Long> {
     Optional<Bill> findByReservationId(Long reservationId);
 
     List<Bill> findByStatus(BillStatus status);
+
+    long countByStatus(BillStatus status);
+
 }

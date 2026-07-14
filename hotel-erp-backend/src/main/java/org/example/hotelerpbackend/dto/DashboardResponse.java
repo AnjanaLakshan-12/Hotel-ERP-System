@@ -10,11 +10,22 @@ import java.math.BigDecimal;
 @Getter
 @AllArgsConstructor
 public class DashboardResponse {
-    private long totalCustomers;
+    private long customersArrivingToday;
+    private long confirmedReservations;
+    private long customersInHouse;
+
     private long totalRooms;
     private long availableRooms;
     private long occupiedRooms;
-    private long totalReservations;
-    private long unpaidBills;
-    private BigDecimal totalRevenue;
+    private long maintenanceRooms;
+
+    private long reservationsToday;
+    private long checkedInReservations;
+    private long checkedOutReservations;
+    private long cancelledReservations;
+    private long pendingCancellationRequests;
+
+    private long paidInvoices;
+    private long unpaidInvoices;
+    private BigDecimal paidRevenue;
 }
