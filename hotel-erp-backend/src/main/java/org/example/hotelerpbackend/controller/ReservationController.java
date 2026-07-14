@@ -67,17 +67,17 @@ public class ReservationController {
         }
     }
 
-    @PatchMapping("/{id}/cancel")
-    public ResponseEntity<?> cancelReservation(
-            @PathVariable Long id,
-            @RequestBody CancelReservationRequest request
-    ) {
-        try {
-            return ResponseEntity.ok(reservationService.cancelReservation(id, request));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
-    }
+//    @PatchMapping("/{id}/cancel")
+//    public ResponseEntity<?> cancelReservation(
+//            @PathVariable Long id,
+//            @RequestBody CancelReservationRequest request
+//    ) {
+//        try {
+//            return ResponseEntity.ok(reservationService.cancelReservation(id, request));
+//        } catch (RuntimeException e) {
+//            return ResponseEntity.badRequest().body(e.getMessage());
+//        }
+//    }
 
     @PatchMapping("/{id}/request-cancellation")
     public ResponseEntity<?> submitCancellationRequest(
