@@ -3,6 +3,7 @@ package org.example.hotelerpbackend.entity;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
+import org.example.hotelerpbackend.enums.CancellationDecision;
 import org.example.hotelerpbackend.enums.PaymentMethod;
 import org.example.hotelerpbackend.enums.ReservationStatus;
 import org.hibernate.annotations.CreationTimestamp;
@@ -65,5 +66,10 @@ public class Reservation {
 
     @Column
     private BigDecimal refundedAmount = BigDecimal.ZERO;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private CancellationDecision cancellationDecision = CancellationDecision.NONE;
+
 
 }

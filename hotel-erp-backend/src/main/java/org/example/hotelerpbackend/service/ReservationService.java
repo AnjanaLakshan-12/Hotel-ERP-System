@@ -2,12 +2,14 @@ package org.example.hotelerpbackend.service;
 
 import jakarta.transaction.Transactional;
 import org.example.hotelerpbackend.dto.CancelReservationRequest;
+import org.example.hotelerpbackend.dto.ProcessCancellationRequest;
 import org.example.hotelerpbackend.dto.ReservationRequest;
 import org.example.hotelerpbackend.entity.Bill;
 import org.example.hotelerpbackend.entity.Customer;
 import org.example.hotelerpbackend.entity.Reservation;
 import org.example.hotelerpbackend.entity.Room;
 import org.example.hotelerpbackend.enums.BillStatus;
+import org.example.hotelerpbackend.enums.CancellationDecision;
 import org.example.hotelerpbackend.enums.ReservationStatus;
 import org.example.hotelerpbackend.enums.RoomStatus;
 import org.example.hotelerpbackend.repository.BillRepository;
@@ -111,8 +113,26 @@ public class ReservationService {
             throw new RuntimeException("Cancelled reservation status cannot be changed.");
         }
 
+        if (reservation.getStatus() == ReservationStatus.CANCELLATION_REQUESTED) {
+            throw new RuntimeException("Reservation is waiting for manager cancellation review.");
+        }
+
         if (status == ReservationStatus.CANCELLED) {
             throw new RuntimeException("Use the cancellation process to cancel a reservation.");
+        }
+
+        if (status == ReservationStatus.CANCELLATION_REQUESTED) {
+            throw new RuntimeException("Use the cancellation request process.");
+        }
+
+        if (status == ReservationStatus.CHECKED_IN &&
+                reservation.getStatus() != ReservationStatus.CONFIRMED) {
+            throw new RuntimeException("Only confirmed reservations can be checked in.");
+        }
+
+        if (status == ReservationStatus.CHECKED_OUT &&
+                reservation.getStatus() != ReservationStatus.CHECKED_IN) {
+            throw new RuntimeException("Only checked-in reservations can be checked out.");
         }
 
         reservation.setStatus(status);
@@ -142,6 +162,10 @@ public class ReservationService {
     @Transactional
     public Reservation earlyCheckout(Long id, LocalDate actualCheckoutDate) {
         Reservation reservation = getReservationById(id);
+
+        if (reservation.getStatus() != ReservationStatus.CHECKED_IN) {
+            throw new RuntimeException("Only checked-in reservations can use early checkout.");
+        }
 
         if (actualCheckoutDate == null) {
             throw new RuntimeException("Actual checkout date is required");
@@ -196,7 +220,57 @@ public class ReservationService {
         billRepository.save(bill);
     }
 
-    public Reservation cancelReservation(Long id, CancelReservationRequest request) {
+//    public Reservation cancelReservation(Long id, CancelReservationRequest request) {
+//        Reservation reservation = reservationRepository.findById(id)
+//                .orElseThrow(() -> new RuntimeException("Reservation not found"));
+//
+//        if (reservation.getStatus() == ReservationStatus.CHECKED_IN) {
+//            throw new RuntimeException("Checked-in reservation cannot be cancelled. Please use checkout or early checkout.");
+//        }
+//
+//        if (reservation.getStatus() == ReservationStatus.CHECKED_OUT) {
+//            throw new RuntimeException("Checked-out reservation cannot be cancelled.");
+//        }
+//
+//        if (reservation.getStatus() == ReservationStatus.CANCELLED) {
+//            throw new RuntimeException("Reservation is already cancelled.");
+//        }
+//
+//        if (request.getCancellationReason() == null || request.getCancellationReason().trim().isEmpty()) {
+//            throw new RuntimeException("Cancellation reason is required.");
+//        }
+//
+//        reservation.setStatus(ReservationStatus.CANCELLED);
+//        reservation.setCancellationReason(request.getCancellationReason().trim());
+//
+//        LocalDateTime now = LocalDateTime.now();
+//        LocalDateTime checkInDateTime = reservation.getCheckInDate().atStartOfDay();
+//
+//        long hoursBeforeCheckIn = ChronoUnit.HOURS.between(now, checkInDateTime);
+//        boolean eligibleForRefund = hoursBeforeCheckIn >= 24;
+//
+//        BigDecimal advanceAmount = reservation.getAdvanceAmount() == null
+//                ? BigDecimal.ZERO
+//                : reservation.getAdvanceAmount();
+//
+//        boolean shouldRefund = eligibleForRefund && advanceAmount.compareTo(BigDecimal.ZERO) > 0;
+//
+//        reservation.setAdvanceRefunded(shouldRefund);
+//
+//        if (shouldRefund) {
+//            reservation.setRefundedAmount(advanceAmount);
+//        } else {
+//            reservation.setRefundedAmount(BigDecimal.ZERO);
+//        }
+//
+//        reservation.getRoom().setStatus(RoomStatus.AVAILABLE);
+//        roomRepository.save(reservation.getRoom());
+//
+//        return reservationRepository.save(reservation);
+//    }
+
+    @Transactional
+    public Reservation submitCancellationRequest(Long id, CancelReservationRequest request) {
         Reservation reservation = reservationRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Reservation not found"));
 
@@ -212,36 +286,110 @@ public class ReservationService {
             throw new RuntimeException("Reservation is already cancelled.");
         }
 
+        if (reservation.getStatus() == ReservationStatus.CANCELLATION_REQUESTED) {
+            throw new RuntimeException("Cancellation request is already waiting for manager review.");
+        }
+
+        if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
+            throw new RuntimeException("Only confirmed reservations can request cancellation.");
+        }
+
         if (request.getCancellationReason() == null || request.getCancellationReason().trim().isEmpty()) {
             throw new RuntimeException("Cancellation reason is required.");
         }
 
-        reservation.setStatus(ReservationStatus.CANCELLED);
+        reservation.setStatus(ReservationStatus.CANCELLATION_REQUESTED);
+        reservation.setCancellationDecision(CancellationDecision.REQUESTED);
         reservation.setCancellationReason(request.getCancellationReason().trim());
+        reservation.setAdvanceRefunded(false);
+        reservation.setRefundedAmount(BigDecimal.ZERO);
 
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime checkInDateTime = reservation.getCheckInDate().atStartOfDay();
+        return reservationRepository.save(reservation);
+    }
 
-        long hoursBeforeCheckIn = ChronoUnit.HOURS.between(now, checkInDateTime);
-        boolean eligibleForRefund = hoursBeforeCheckIn >= 24;
+
+    @Transactional
+    public Reservation processCancellationRequest(Long id, ProcessCancellationRequest request) {
+        Reservation reservation = reservationRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Reservation not found"));
+
+        if (reservation.getStatus() != ReservationStatus.CANCELLATION_REQUESTED) {
+            throw new RuntimeException("Reservation is not waiting for cancellation review.");
+        }
+
+        if (request.getDecision() == null) {
+            throw new RuntimeException("Cancellation decision is required.");
+        }
 
         BigDecimal advanceAmount = reservation.getAdvanceAmount() == null
                 ? BigDecimal.ZERO
                 : reservation.getAdvanceAmount();
 
-        boolean shouldRefund = eligibleForRefund && advanceAmount.compareTo(BigDecimal.ZERO) > 0;
+        BigDecimal refundedAmount;
+        boolean advanceRefunded;
 
-        reservation.setAdvanceRefunded(shouldRefund);
+        switch (request.getDecision()) {
+            case APPROVED_FULL_REFUND:
+                refundedAmount = advanceAmount;
+                advanceRefunded = advanceAmount.compareTo(BigDecimal.ZERO) > 0;
+                approveCancellation(reservation, request.getDecision(), refundedAmount, advanceRefunded);
+                break;
 
-        if (shouldRefund) {
-            reservation.setRefundedAmount(advanceAmount);
-        } else {
-            reservation.setRefundedAmount(BigDecimal.ZERO);
+            case APPROVED_NO_REFUND:
+                refundedAmount = BigDecimal.ZERO;
+                advanceRefunded = false;
+                approveCancellation(reservation, request.getDecision(), refundedAmount, advanceRefunded);
+                break;
+
+            case APPROVED_PARTIAL_REFUND:
+                if (request.getPartialRefundAmount() == null) {
+                    throw new RuntimeException("Partial refund amount is required.");
+                }
+
+                if (request.getPartialRefundAmount().compareTo(BigDecimal.ZERO) < 0) {
+                    throw new RuntimeException("Partial refund amount cannot be negative.");
+                }
+
+                if (request.getPartialRefundAmount().compareTo(advanceAmount) > 0) {
+                    throw new RuntimeException("Partial refund cannot exceed advance amount.");
+                }
+
+                refundedAmount = request.getPartialRefundAmount();
+                advanceRefunded = refundedAmount.compareTo(BigDecimal.ZERO) > 0;
+                approveCancellation(reservation, request.getDecision(), refundedAmount, advanceRefunded);
+                break;
+
+            case REJECTED:
+                rejectCancellation(reservation);
+                break;
+
+            default:
+                throw new RuntimeException("Invalid cancellation decision.");
         }
-
-        reservation.getRoom().setStatus(RoomStatus.AVAILABLE);
-        roomRepository.save(reservation.getRoom());
 
         return reservationRepository.save(reservation);
     }
+
+    private void approveCancellation(
+            Reservation reservation,
+            CancellationDecision decision,
+            BigDecimal refundedAmount,
+            boolean advanceRefunded
+    ) {
+        reservation.setStatus(ReservationStatus.CANCELLED);
+        reservation.setCancellationDecision(decision);
+        reservation.setAdvanceRefunded(advanceRefunded);
+        reservation.setRefundedAmount(refundedAmount);
+
+        Room room = reservation.getRoom();
+        room.setStatus(RoomStatus.AVAILABLE);
+        roomRepository.save(room);
+    }
+    private void rejectCancellation(Reservation reservation) {
+        reservation.setStatus(ReservationStatus.CONFIRMED);
+        reservation.setCancellationDecision(CancellationDecision.REJECTED);
+        reservation.setAdvanceRefunded(false);
+        reservation.setRefundedAmount(BigDecimal.ZERO);
+    }
+
 }

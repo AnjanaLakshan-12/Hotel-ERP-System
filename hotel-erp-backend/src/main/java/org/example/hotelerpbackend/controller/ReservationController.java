@@ -1,6 +1,7 @@
 package org.example.hotelerpbackend.controller;
 
 import org.example.hotelerpbackend.dto.CancelReservationRequest;
+import org.example.hotelerpbackend.dto.ProcessCancellationRequest;
 import org.example.hotelerpbackend.dto.ReservationRequest;
 import org.example.hotelerpbackend.enums.ReservationStatus;
 import org.example.hotelerpbackend.service.ReservationService;
@@ -73,6 +74,30 @@ public class ReservationController {
     ) {
         try {
             return ResponseEntity.ok(reservationService.cancelReservation(id, request));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PatchMapping("/{id}/request-cancellation")
+    public ResponseEntity<?> submitCancellationRequest(
+            @PathVariable Long id,
+            @RequestBody CancelReservationRequest request
+    ) {
+        try {
+            return ResponseEntity.ok(reservationService.submitCancellationRequest(id, request));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PatchMapping("/{id}/process-cancellation")
+    public ResponseEntity<?> processCancellationRequest(
+            @PathVariable Long id,
+            @RequestBody ProcessCancellationRequest request
+    ) {
+        try {
+            return ResponseEntity.ok(reservationService.processCancellationRequest(id, request));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
