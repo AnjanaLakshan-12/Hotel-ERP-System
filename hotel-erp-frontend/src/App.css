@@ -778,4 +778,83 @@ button:disabled {
   box-shadow: 0 0 0 3px rgba(184, 137, 24, 0.12);
 }
 
+
+
+
+
+
+
+
+
+
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.quick-actions button {
+  border: 0;
+  border-radius: 6px;
+  background: #eef2f7;
+  color: #0f172a;
+  padding: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.quick-actions button:hover {
+  background: #dde5ef;
+}
+
+.admin-mini-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.admin-mini-stats div {
+  border: 1px solid #d7dee8;
+  border-radius: 6px;
+  padding: 14px;
+  background: #f8fafc;
+}
+
+.admin-mini-stats strong {
+  display: block;
+  font-size: 24px;
+  color: #0f172a;
+}
+
+.admin-mini-stats span {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.role-access-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.role-access-item {
+  border: 1px solid #d7dee8;
+  border-radius: 6px;
+  padding: 14px;
+  background: #f8fafc;
+}
+
+.role-access-item strong {
+  display: block;
+  margin-bottom: 6px;
+  color: #0f172a;
+}
+
+.role-access-item p {
+  margin: 0;
+  color: #475569;
+}
+
 }

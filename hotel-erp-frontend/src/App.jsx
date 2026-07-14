@@ -2,13 +2,15 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
-import AdminDashboard from "./pages/admin/AdminDashboard";
+// import AdminDashboard from "./pages/admin/OperationsDashboard";
 import CustomerManagement from "./pages/admin/CustomerManagement";
 import RoomManagement from "./pages/admin/RoomManagement";
 import ReservationManagement from "./pages/admin/ReservationManagement";
 import BillingManagement from "./pages/admin/BillingManagement";
 import ServiceChargeManagement from "./pages/admin/ServiceChargeManagement";
 import ManagerPanel  from "./pages/admin/ManagerPanel";
+import OperationsDashboard from "./pages/admin/OperationsDashboard";
+import AdminDashboard from "./pages/admin/AdminDashboard";
 import "./App.css";
 
 function App() {
@@ -24,6 +26,8 @@ function App() {
         <Route path="/admin/service-charges" element={<ServiceChargeManagement />} />
         <Route path="/admin/billing" element={<BillingManagement />} />
         <Route path="/admin/manager" element={<ManagerPanel />} />
+
+        <Route path="/admin/operations-dashboard" element={<OperationsDashboard />} />   
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

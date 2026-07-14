@@ -7,11 +7,14 @@ export const ROLES = {
 
 export const routePermissions = {
   "/admin/dashboard": [
-    ROLES.ADMIN,
-    ROLES.MANAGER,
-    ROLES.RECEPTIONIST,
-    ROLES.SERVICE_STAFF
+    ROLES.ADMIN
   ],
+  "/admin/operations-dashboard": [
+  ROLES.ADMIN,
+  ROLES.MANAGER,
+  ROLES.RECEPTIONIST,
+  ROLES.SERVICE_STAFF
+],
   "/admin/customers": [
     ROLES.ADMIN,
     ROLES.RECEPTIONIST
@@ -41,10 +44,15 @@ export const routePermissions = {
 
 export const navigationItems = [
   {
-    label: "Dashboard",
-    path: "/admin/dashboard",
-    roles: routePermissions["/admin/dashboard"]
-  },
+  label: "Dashboard",
+  path: "/admin/operations-dashboard",
+  roles: routePermissions["/admin/operations-dashboard"]
+},
+{
+  label: "Admin Dashboard",
+  path: "/admin/dashboard",
+  roles: routePermissions["/admin/dashboard"]
+},
   {
     label: "Customers",
     path: "/admin/customers",
