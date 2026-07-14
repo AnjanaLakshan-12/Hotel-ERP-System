@@ -143,6 +143,19 @@ function ManagerPanel() {
     }
   };
 
+
+  const handleCompleteMaintenance = async (request) => {
+  setMessage("");
+
+  try {
+    await completeMaintenanceRequest(request.id);
+    setMessage("Maintenance completed and room returned to available");
+    loadData();
+  } catch (err) {
+    setMessage(err.response?.data || "Failed to complete maintenance request");
+  }
+};
+
   return (
     <AppShell
       title="Manager Panel"
@@ -223,43 +236,53 @@ function ManagerPanel() {
           </table>
         </section>
 
-        <section className="panel table-panel">
-          <h3>Active Maintenance</h3>
-          <p className="panel-note">
-            Approved requests stay active until the manager marks the repair as completed.
-          </p>
+<section className="panel table-panel">
+  <h3>Active Maintenance</h3>
+  <p className="panel-note">
+    Approved requests stay active until the manager marks the repair as completed.
+  </p>
 
-          <table>
-            <thead>
-              <tr>
-                <th>Room</th>
-                <th>Issue</th>
-                <th>Priority</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {approvedMaintenanceRequests.length === 0 ? (
-                <tr>
-                  <td colSpan="4">No active maintenance work</td>
-                </tr>
-              ) : (
-                approvedMaintenanceRequests.map((request) => (
-                  <tr key={request.id}>
-                    <td>Room {request.room?.roomNumber}</td>
-                    <td>{request.issueTitle}</td>
-                    <td><StatusBadge status={request.priority} /></td>
-                    <td className="table-actions">
-                      <button onClick={() => handleCompleteMaintenance(request)}>
-                        Mark Completed
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </section>
+  <table>
+    <thead>
+      <tr>
+        <th>Room</th>
+        <th>Issue</th>
+        <th>Priority</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {approvedMaintenanceRequests.length === 0 ? (
+        <tr>
+          <td colSpan="4">No active maintenance work</td>
+        </tr>
+      ) : (
+        approvedMaintenanceRequests.map((request) => (
+          <tr key={request.id}>
+            <td>Room {request.room?.roomNumber}</td>
+            <td>{request.issueTitle}</td>
+            <td><StatusBadge status={request.priority} /></td>
+            <td className="table-actions">
+              <button onClick={() => handleCompleteMaintenance(request)}>
+                Set Room Available
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setMessage("Maintenance department report module is not implemented in this prototype")
+                }
+              >
+                Review Maintenance Report
+              </button>
+            </td>
+          </tr>
+        ))
+      )}
+    </tbody>
+  </table>
+</section>
 
         <section className="panel table-panel">
           <h3>Reservation Cancellation Requests</h3>
