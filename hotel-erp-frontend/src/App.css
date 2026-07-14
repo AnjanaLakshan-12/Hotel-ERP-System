@@ -227,6 +227,13 @@
   color: var(--muted);
 }
 
+.table-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 16px 0;
+}
+
 .dashboard-section {
   margin-bottom: 28px;
 }

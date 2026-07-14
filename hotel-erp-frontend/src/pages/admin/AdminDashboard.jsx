@@ -92,6 +92,13 @@ function AdminDashboard() {
   const [editingId, setEditingId] = useState(null);
   const [roomForm, setRoomForm] = useState(emptyRoom);
   const [editingRoomId, setEditingRoomId] = useState(null);
+  const [userSearch, setUserSearch] = useState("");
+  const [userRoleFilter, setUserRoleFilter] = useState("ALL");
+  const [userStatusFilter, setUserStatusFilter] = useState("ALL");
+  const [adminRoomSearch, setAdminRoomSearch] = useState("");
+  const [adminRoomStatusFilter, setAdminRoomStatusFilter] = useState("ALL");
+  const [adminRoomTypeFilter, setAdminRoomTypeFilter] = useState("ALL");
+  const [adminFloorFilter, setAdminFloorFilter] = useState("ALL");
   const [message, setMessage] = useState("");
 
   const loadData = async () => {
@@ -305,6 +312,45 @@ function AdminDashboard() {
   const activeRoomCount = rooms.filter((room) => room.status !== "MAINTENANCE").length;
   const maintenanceRoomCount = rooms.filter((room) => room.status === "MAINTENANCE").length;
 
+  const filteredUsers = users.filter((user) => {
+    const fullName = `${user.firstName || ""} ${user.lastName || ""}`;
+    const email = user.email || "";
+
+    const matchesSearch =
+      fullName.toLowerCase().includes(userSearch.toLowerCase()) ||
+      email.toLowerCase().includes(userSearch.toLowerCase());
+
+    const matchesRole = userRoleFilter === "ALL" || user.role === userRoleFilter;
+
+    const matchesStatus =
+      userStatusFilter === "ALL" ||
+      (userStatusFilter === "ACTIVE" && user.active) ||
+      (userStatusFilter === "DEACTIVATED" && !user.active);
+
+    return matchesSearch && matchesRole && matchesStatus;
+  });
+
+  const adminFloors = [...new Set(rooms.map((room) => room.floor).filter(Boolean))].sort(
+    (a, b) => Number(a) - Number(b)
+  );
+
+  const filteredAdminRooms = rooms.filter((room) => {
+    const matchesSearch = String(room.roomNumber || "")
+      .toLowerCase()
+      .includes(adminRoomSearch.toLowerCase());
+
+    const matchesStatus =
+      adminRoomStatusFilter === "ALL" || room.status === adminRoomStatusFilter;
+
+    const matchesType =
+      adminRoomTypeFilter === "ALL" || room.roomType === adminRoomTypeFilter;
+
+    const matchesFloor =
+      adminFloorFilter === "ALL" || String(room.floor) === adminFloorFilter;
+
+    return matchesSearch && matchesStatus && matchesType && matchesFloor;
+  });
+
   return (
     <AppShell title="Admin Dashboard" subtitle="Manage system users, roles, access, and core ERP administration.">
       {message && <div className="alert">{message}</div>}
@@ -436,6 +482,28 @@ function AdminDashboard() {
         <section id="users-table" className="panel table-panel span-wide">
           <h3>User Management</h3>
 
+          <div className="table-filters">
+            <input
+              placeholder="Search name or email"
+              value={userSearch}
+              onChange={(event) => setUserSearch(event.target.value)}
+            />
+
+            <select value={userRoleFilter} onChange={(event) => setUserRoleFilter(event.target.value)}>
+              <option value="ALL">All Roles</option>
+              <option value="ADMIN">Admin</option>
+              <option value="MANAGER">Manager</option>
+              <option value="RECEPTIONIST">Receptionist</option>
+              <option value="SERVICE_STAFF">Service Staff</option>
+            </select>
+
+            <select value={userStatusFilter} onChange={(event) => setUserStatusFilter(event.target.value)}>
+              <option value="ALL">All Status</option>
+              <option value="ACTIVE">Active</option>
+              <option value="DEACTIVATED">Deactivated</option>
+            </select>
+          </div>
+
           <table>
             <thead>
               <tr>
@@ -448,7 +516,7 @@ function AdminDashboard() {
             </thead>
 
             <tbody>
-              {users.map((user) => (
+              {filteredUsers.map((user) => (
                 <tr key={user.id}>
                   <td>{user.firstName} {user.lastName}</td>
                   <td>{user.email}</td>
@@ -602,6 +670,38 @@ function AdminDashboard() {
             )}
           </form>
 
+          <div className="table-filters">
+            <input
+              placeholder="Search room number"
+              value={adminRoomSearch}
+              onChange={(event) => setAdminRoomSearch(event.target.value)}
+            />
+
+            <select value={adminRoomStatusFilter} onChange={(event) => setAdminRoomStatusFilter(event.target.value)}>
+              <option value="ALL">All Status</option>
+              <option value="AVAILABLE">Available</option>
+              <option value="OCCUPIED">Occupied</option>
+              <option value="MAINTENANCE">Maintenance</option>
+            </select>
+
+            <select value={adminRoomTypeFilter} onChange={(event) => setAdminRoomTypeFilter(event.target.value)}>
+              <option value="ALL">All Types</option>
+              <option value="Standard">Standard</option>
+              <option value="Deluxe">Deluxe</option>
+              <option value="Suite">Suite</option>
+              <option value="Family">Family</option>
+            </select>
+
+            <select value={adminFloorFilter} onChange={(event) => setAdminFloorFilter(event.target.value)}>
+              <option value="ALL">All Floors</option>
+              {adminFloors.map((floor) => (
+                <option key={floor} value={floor}>
+                  Floor {floor}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <table>
             <thead>
               <tr>
@@ -615,7 +715,7 @@ function AdminDashboard() {
             </thead>
 
             <tbody>
-              {rooms.map((room) => (
+              {filteredAdminRooms.map((room) => (
                 <tr key={room.id}>
                   <td>{room.roomNumber}</td>
                   <td>{room.roomType}</td>
