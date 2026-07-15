@@ -900,4 +900,21 @@ button:disabled {
   color: #475569;
 }
 
+.home-login-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin-top: 18px;
+  margin-bottom: 16px;
+  text-decoration: none;
+}
+
+.login-note {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
 }
