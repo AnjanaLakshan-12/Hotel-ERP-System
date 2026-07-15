@@ -13,9 +13,13 @@ function Home() {
       <section className="auth-card">
         <h2>Welcome</h2>
         <p>Sign in to access the operations dashboard.</p>
-<Link className="primary-button home-login-button" to="/login">
+        <section className="aaaa">
+          <Link className="primary-button home-login-button" to="/login">
   Login
 </Link>
+          
+        </section>
+
         <p className="login-note">
           Staff accounts are created by an administrator.
         </p>
