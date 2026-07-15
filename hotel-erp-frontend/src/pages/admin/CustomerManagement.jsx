@@ -32,6 +32,14 @@ function CustomerManagement() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setMessage("");
+
+    const phoneRegex = /^0[0-9]{9}$/;
+
+    if (!phoneRegex.test(form.phone)) {
+      setMessage("Phone number must be 10 digits and start with 0");
+      return;
+    }
+
     try {
       if (editingId) {
         await updateCustomer(editingId, form);
@@ -84,7 +92,16 @@ function CustomerManagement() {
           </label>
           <label>
             Phone
-            <input name="phone" value={form.phone} onChange={handleChange} required />
+            <input
+              name="phone"
+              value={form.phone}
+              onChange={handleChange}
+              placeholder="0771234567"
+              pattern="0[0-9]{9}"
+              maxLength="10"
+              title="Phone number must be 10 digits and start with 0"
+              required
+            />
           </label>
           <label>
             Address
